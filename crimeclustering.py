@@ -74,8 +74,8 @@ class CrimeClustering:
 
 		return self.remove_invalid_coord(df)
 
-	def make_gauss(N=1, sig=1, mu=0):
-		return lambda xt: N/(sig * (2*np.pi)**.5) * np.e ** (-(xt-mu)**2/(2 * sig**2))
+	def make_gauss(self, N=1, sig=1, mu=0):
+		return lambda xt: N/(sig * (2*np.pi)**.5) * np.e ** (-(xt-mu)**2/(1000 * sig**2))
 
 	def calculate_difference(self, hour, minute, ref_hour, ref_minute):
 
@@ -84,16 +84,13 @@ class CrimeClustering:
 
 		xt = time - ref_time
 
-		print(xt, type(xt))
-
 		score = self.make_gauss()(xt)
 
-		print(score)
+		#print('%.10f' % (score))
+		#input(';')
 
-		input(';')
-
-
-
+		return float('%.10f' % (score))
+		
 
 	def calculate_score(self, crimes_filtered):
 
@@ -103,8 +100,14 @@ class CrimeClustering:
 
 			for minute in range(0, 60, 10):
 
+				state_score = []
 				for index, row in crimes_filtered.iterrows():
-					self.calculate_difference(row['hour'], row['minute'], hour, minute)
+					state_score.append(self.calculate_difference(row['hour'], row['minute'], hour, minute))
+
+				window_scores.append(np.sum(state_score))
+
+		return window_scores
+
 
 
 	def clusterize(self):
