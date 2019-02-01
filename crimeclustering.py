@@ -86,11 +86,8 @@ class CrimeClustering:
 
 		score = self.make_gauss()(xt)
 
-		#print('%.10f' % (score))
-		#input(';')
+		return float('%.5f' % (score))
 
-		return float('%.10f' % (score))
-		
 
 	def calculate_score(self, crimes_filtered):
 
@@ -108,6 +105,10 @@ class CrimeClustering:
 
 		return window_scores
 
+	def identify_window(self, window_scores):
+
+		maxi_value = np.max(window_scores)
+		print(maxi_value)
 
 
 	def clusterize(self):
@@ -134,6 +135,8 @@ class CrimeClustering:
 					if not crimes_filtered.empty:
 						
 						window_scores = self.calculate_score(crimes_filtered)
+						self.identify_window(window_scores)
+						exit()
 
 							
 				exit()
