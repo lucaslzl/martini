@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import os, sys
 import warnings
+import matplotlib.pyplot as plt
 
 from sklearn.cluster import DBSCAN
 import hdbscan
@@ -105,6 +106,13 @@ class CrimeClustering:
 
 		return window_scores
 
+	def plot_to_see(self, window_scores):
+
+		plt.figure(1)
+		plt.subplot(211)
+		plt.plot(range(0, 144), window_scores, 'r--')
+		plt.show()
+
 	def identify_window(self, window_scores):
 
 		maxi_value = np.max(window_scores)
@@ -135,7 +143,8 @@ class CrimeClustering:
 					if not crimes_filtered.empty:
 						
 						window_scores = self.calculate_score(crimes_filtered)
-						self.identify_window(window_scores)
+						#self.identify_window(window_scores)
+						self.plot_to_see(window_scores)
 						exit()
 
 							
