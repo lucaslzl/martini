@@ -5,7 +5,7 @@ import warnings
 import matplotlib.pyplot as plt
 
 from sklearn.cluster import DBSCAN
-import hdbscan
+#import hdbscan
 
 
 class Clustering:
@@ -110,7 +110,9 @@ class CrimeClustering:
 
 		plt.figure(1)
 		plt.subplot(211)
-		plt.plot(range(0, 144), window_scores, 'r--')
+
+		for w in window_scores:
+			plt.plot(range(0, 144), w, '--')
 		plt.show()
 
 	def identify_window(self, window_scores):
@@ -135,6 +137,7 @@ class CrimeClustering:
 				df_crimes = day_crimes['2018-' + str(month)]
 				crimes = df_crimes.groupby('type').all().index
 
+				just_to_plot = []
 				for crime in crimes:
 
 					crimes_filtered = df_crimes.query("type == '%s'" % crime)
@@ -144,9 +147,9 @@ class CrimeClustering:
 						
 						window_scores = self.calculate_score(crimes_filtered)
 						#self.identify_window(window_scores)
-						self.plot_to_see(window_scores)
-						exit()
+						just_to_plot.append(window_scores)
 
+				self.plot_to_see(just_to_plot)
 							
 				exit()
 
