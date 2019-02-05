@@ -213,8 +213,6 @@ class CrimeClustering:
 				df_crimes = day_crimes['2018-' + str(month)]
 				crimes = df_crimes.groupby('type').all().index
 
-				qtd_cluster = 0
-
 				for crime in crimes:
 
 					crimes_filtered = df_crimes.query("type == '%s'" % crime)
@@ -241,13 +239,9 @@ class CrimeClustering:
 									cluster_crime = clustering.clusterize(crimes_window)
 									clusters = self.format_clusters(cluster_crime)
 
-									qtd_cluster += len(clusters)
-
 									self.write_clusters(clusters, month, day, last_window, crime)
 									
 									last_window = iw
-
-				print(qtd_cluster)
 
 		
 ######################################################################
