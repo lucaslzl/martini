@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 
 from sklearn.cluster import DBSCAN
 #import hdbscan
+from scipy.signal import find_peaks
 
 
 class Clustering:
@@ -22,7 +23,7 @@ class Clustering:
 	'''
 	def clusterize(self, data):
 		data_formated = self.encode(data.copy())
-		clustering = DBSCAN(eps=0.01, min_samples=4).fit_predict(data_formated)
+		clustering = DBSCAN(eps=0.02, min_samples=3).fit_predict(data_formated)
 		#clustering = hdbscan.HDBSCAN(min_cluster_size=10).fit_predict(data_formated)
 		data['cluster'] = clustering
 		return data.sort_values('cluster')
@@ -111,33 +112,109 @@ class CrimeClustering:
 		plt.figure(1)
 		plt.subplot(211)
 
-		for w in window_scores:
-			plt.plot(range(0, 144), w, '--')
+		#for w in window_scores:
+		plt.plot(range(0, 144), window_scores, '--')
 		plt.show()
 
-	def identify_window(self, window_scores):
+	def identify_window(self, window_scores, peaks):
 
-		maxi_value = np.max(window_scores)
-		print(maxi_value)
 
+		iterpeaks = iter(peaks)
+		next(iterpeaks)
+		last_peak = peaks[0]
+
+		apeaks = []
+
+		for peak in iterpeaks:
+
+			apeaks.append(last_peak + np.argmin(window_scores[last_peak:peak]))
+			last_peak = peak
+
+		return [0] + apeaks
+
+	'''
+		Format hour
+	'''
+	def format_digits(self, number):
+
+		if len(str(number)) < 2:
+			number = '0' + str(number)
+		return str(number)
+
+	def get_window(self, start, end, crimes_filtered):
+
+		start_hour = start * 10 // 60
+		start_minute = start * 10 % 60
+
+		end_hour = end * 10 // 60
+		end_minute = end * 10 % 60
+
+		# Filter the closed interval
+		crimes_opened = crimes_filtered.query('hour > {0} & hour < {1}'.format(start_hour, end_hour))
+
+		# Filter the opened interval
+		crimes_closed_low = crimes_filtered.query('hour == {0} & minute >= {1}'.format(start_hour, start_minute))
+		crimes_closed_high = crimes_filtered.query('hour == {0} & minute < {1}'.format(end_hour, end_minute))
+
+		return pd.concat([crimes_opened, crimes_closed_low, crimes_closed_high])
+
+	'''
+		Format clusters according to id
+	'''
+	def format_clusters(self, data):
+
+		clusters = []
+		clusters.append([])
+		lastid = 0
+
+		data = data.query('cluster > -1')
+
+		for indx, row in data.iterrows():
+			if row['cluster'] > lastid:
+				clusters.append([])
+				lastid = row['cluster']
+			clusters[-1].append((row['lat'], row['lon']))
+
+		return clusters
+
+	# Write data
+
+	'''
+		Save clusters
+	'''
+	def write_clusters(self, clusters, month, day, start, crime):
+
+		if not os.path.exists('clusters'):
+			os.makedirs('clusters')
+
+		output_file = open('clusters/{0}_{1}_{2}_{3}_clusters.txt'.format(self.MONTHS[month], str(day), crime, self.format_digits(str(start))), 'w')
+
+		for cluster in clusters:
+			for point in cluster:
+				output_file.write(str(point[0]) + ' ' + str(point[1]) + '; ')
+
+			output_file.write('\n')
+		output_file.close()
 
 	def clusterize(self):
 
 		clustering = Clustering()
 
-		month = 1
-		day = 'monday'
-
 		for day in ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']:
 
 			day_crimes = self.read_data(day)
 
+			print('### ' + day)
+
 			for month in range(1, 13):
+
+				print('#' + self.MONTHS[month])
 
 				df_crimes = day_crimes['2018-' + str(month)]
 				crimes = df_crimes.groupby('type').all().index
 
-				just_to_plot = []
+				qtd_cluster = 0
+
 				for crime in crimes:
 
 					crimes_filtered = df_crimes.query("type == '%s'" % crime)
@@ -146,12 +223,31 @@ class CrimeClustering:
 					if not crimes_filtered.empty:
 						
 						window_scores = self.calculate_score(crimes_filtered)
-						#self.identify_window(window_scores)
-						just_to_plot.append(window_scores)
 
-				self.plot_to_see(just_to_plot)
-							
-				exit()
+						peaks = find_peaks(window_scores, distance=9)[0]
+
+						if len(peaks) > 0:
+						
+							window = self.identify_window(window_scores, peaks)
+
+							if len(window) > 0:
+								iterwindow = iter(window)
+								next(iterwindow)
+								last_window = window[0]
+								for iw in iterwindow:
+									
+									crimes_window = self.get_window(last_window, iw, crimes_filtered)
+
+									cluster_crime = clustering.clusterize(crimes_window)
+									clusters = self.format_clusters(cluster_crime)
+
+									qtd_cluster += len(clusters)
+
+									self.write_clusters(clusters, month, day, last_window, crime)
+									
+									last_window = iw
+
+				print(qtd_cluster)
 
 		
 ######################################################################
