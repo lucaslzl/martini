@@ -114,6 +114,9 @@ class CrimeClustering:
 
 		#for w in window_scores:
 		plt.plot(range(0, 144), window_scores, '--')
+		plt.xticks(np.arange(0, 145, 6), np.arange(0, 25))
+		plt.grid(True)
+
 		plt.show()
 
 	def identify_window(self, window_scores, peaks):
@@ -214,13 +217,15 @@ class CrimeClustering:
 				crimes = df_crimes.groupby('type').all().index
 
 				for crime in crimes:
-
+					
 					crimes_filtered = df_crimes.query("type == '%s'" % crime)
 					crimes_filtered = clustering.clusterize(crimes_filtered).query('cluster != -1')	
 
 					if not crimes_filtered.empty:
 						
 						window_scores = self.calculate_score(crimes_filtered)
+						self.plot_to_see(window_scores)
+						input(';')
 
 						peaks = find_peaks(window_scores, distance=9)[0]
 
@@ -239,7 +244,7 @@ class CrimeClustering:
 									cluster_crime = clustering.clusterize(crimes_window)
 									clusters = self.format_clusters(cluster_crime)
 
-									self.write_clusters(clusters, month, day, last_window, crime)
+									#self.write_clusters(clusters, month, day, last_window, crime)
 									
 									last_window = iw
 
