@@ -15,7 +15,7 @@ class Clustering:
 		Remove columns different from lat and long
 	'''
 	def encode(self, data):
-		data = data.drop(['type'], axis=1).drop(['hour'], axis=1)
+		data = data.drop(['type', 'hour', 'minute'], axis=1)
 		return data
 
 	'''
@@ -23,16 +23,15 @@ class Clustering:
 	'''
 	def clusterize(self, data):
 		data_formated = self.encode(data.copy())
-		clustering = DBSCAN(eps=0.02, min_samples=3).fit_predict(data_formated)
+		clustering = DBSCAN(eps=0.01, min_samples=3).fit_predict(data_formated)
 		#clustering = hdbscan.HDBSCAN(min_cluster_size=10).fit_predict(data_formated)
 		data['cluster'] = clustering
 		return data.sort_values('cluster')
 
+
 ######################################################################
 
-
-class CrimeClustering:
-
+class Util:
 
 	MONTHS = {
 				1  : 'January',
@@ -47,10 +46,32 @@ class CrimeClustering:
 				10 : 'October',
 				11 : 'November',
 				12 : 'December',
-	     	}
+	}
 
 	def remove_invalid_coord(self, df): #[-90; 90]
 		return df.query('lat >= -90 & lat <= 90').query('lon >= -90 & lat <= 90')
+
+	def format_digits(self, number):
+
+		if len(str(number)) < 2:
+			number = '0' + str(number)
+		return str(number)
+
+	def format_clusters(self, data):
+
+		clusters = []
+		clusters.append([])
+		lastid = 0
+
+		data = data.query('cluster > -1')
+
+		for indx, row in data.iterrows():
+			if row['cluster'] > lastid:
+				clusters.append([])
+				lastid = row['cluster']
+			clusters[-1].append((row['lat'], row['lon']))
+
+		return clusters
 
 	def read_data(self, day):
 
@@ -75,6 +96,17 @@ class CrimeClustering:
 		df.set_index('datetime', inplace=True)
 
 		return self.remove_invalid_coord(df)
+
+######################################################################
+
+
+'''
+	Initial code for crime clustering considering minutes interval and gaussian distribution
+'''
+class CrimeClustering:
+
+	def __init__(self):
+		self.u = Util()
 
 	def make_gauss(self, N=1, sig=1, mu=0):
 		return lambda xt: N/(sig * (2*np.pi)**.5) * np.e ** (-(xt-mu)**2/(1000 * sig**2))
@@ -135,15 +167,6 @@ class CrimeClustering:
 
 		return [0] + apeaks
 
-	'''
-		Format hour
-	'''
-	def format_digits(self, number):
-
-		if len(str(number)) < 2:
-			number = '0' + str(number)
-		return str(number)
-
 	def get_window(self, start, end, crimes_filtered):
 
 		start_hour = start * 10 // 60
@@ -161,25 +184,6 @@ class CrimeClustering:
 
 		return pd.concat([crimes_opened, crimes_closed_low, crimes_closed_high])
 
-	'''
-		Format clusters according to id
-	'''
-	def format_clusters(self, data):
-
-		clusters = []
-		clusters.append([])
-		lastid = 0
-
-		data = data.query('cluster > -1')
-
-		for indx, row in data.iterrows():
-			if row['cluster'] > lastid:
-				clusters.append([])
-				lastid = row['cluster']
-			clusters[-1].append((row['lat'], row['lon']))
-
-		return clusters
-
 	# Write data
 
 	'''
@@ -190,7 +194,7 @@ class CrimeClustering:
 		if not os.path.exists('clusters'):
 			os.makedirs('clusters')
 
-		output_file = open('clusters/{0}_{1}_{2}_{3}_clusters.txt'.format(self.MONTHS[month], str(day), crime, self.format_digits(str(start))), 'w')
+		output_file = open('clusters/{0}_{1}_{2}_{3}_clusters.txt'.format(self.u.MONTHS[month], str(day), crime, self.format_digits(str(start))), 'w')
 
 		for cluster in clusters:
 			for point in cluster:
@@ -205,13 +209,13 @@ class CrimeClustering:
 
 		for day in ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']:
 
-			day_crimes = self.read_data(day)
+			day_crimes = self.u.read_data(day)
 
 			print('### ' + day)
 
 			for month in range(1, 13):
 
-				print('#' + self.MONTHS[month])
+				print('#' + self.u.MONTHS[month])
 
 				df_crimes = day_crimes['2018-' + str(month)]
 				crimes = df_crimes.groupby('type').all().index
@@ -224,8 +228,6 @@ class CrimeClustering:
 					if not crimes_filtered.empty:
 						
 						window_scores = self.calculate_score(crimes_filtered)
-						self.plot_to_see(window_scores)
-						input(';')
 
 						peaks = find_peaks(window_scores, distance=9)[0]
 
@@ -242,7 +244,7 @@ class CrimeClustering:
 									crimes_window = self.get_window(last_window, iw, crimes_filtered)
 
 									cluster_crime = clustering.clusterize(crimes_window)
-									clusters = self.format_clusters(cluster_crime)
+									clusters = self.u.format_clusters(cluster_crime)
 
 									#self.write_clusters(clusters, month, day, last_window, crime)
 									
@@ -251,9 +253,117 @@ class CrimeClustering:
 		
 ######################################################################
 
+
+class FixedWindowClustering:
+
+	def __init__(self, size):
+		self.size = size
+
+	def get_window(self, df, start, end):
+		return df.query('hour >= ' + str(start) + ' & hour < ' + str(end))
+
+	def convert_to_minutes(self, hour, minutes):
+		return hour * 60 + minutes
+
+
+	def metric_max_interval(self, clusters):
+
+		interval = 0
+		indx_cluster = clusters['cluster'].max()
+
+		if not np.isnan(indx_cluster):
+
+			for i in range(0, indx_cluster):
+
+				cluster_interval = 0
+				last_datetime = None
+
+				crime_clusters = clusters.query('cluster == ' + str(i)).sort_values(by=['minute', 'hour'])
+
+				for index, row in crime_clusters.iterrows():
+
+					if cluster_interval == 0:
+						last_datetime = self.convert_to_minutes(row['hour'], row['minute'])
+						cluster_interval = 1
+
+					else:
+						diff = self.convert_to_minutes(row['hour'], row['minute']) - last_datetime
+
+						if diff > cluster_interval:
+							cluster_interval = diff
+
+						last_datetime = self.convert_to_minutes(row['hour'], row['minute'])
+
+				if cluster_interval > interval:
+					interval = cluster_interval
+
+		return interval
+
+	def metric_close_crimes(self, clusters):
+
+		return 0
+
+	def clusterize(self, month_crimes, clustering):
+
+		result_max = []
+		result_close = []
+	
+		for i in range(0, 24, self.size):
+			window_crime = self.get_window(month_crimes, i, i+self.size)
+			clusters = clustering.clusterize(window_crime).query('cluster != -1')
+			result_max.append(self.metric_max_interval(clusters))
+			result_close.append(self.metric_close_crimes(clusters))
+
+		input(';')
+
+		return np.max(result_max), np.max(result_close)
+
+
+
+class TimeMinutesClustering:
+
+	pass
+
+
+######################################################################
+
+class CompareClustering:
+
+	def __init__(self):
+		self.u = Util()
+
+	def clusterize(self):
+
+		clustering = Clustering()
+
+		for day in ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']:
+
+			day_crimes = self.u.read_data(day)
+
+			print('### ' + day)
+
+			for month in range(1, 13):
+
+				print('#' + self.u.MONTHS[month])
+
+				month_crimes = day_crimes['2018-' + str(month)]
+
+				result_strategy = {'max': [[], [], [], [], [], []], 'close': [[], [], [], [], [], []]}
+
+				for indx, strategy in enumerate([FixedWindowClustering(1), FixedWindowClustering(2), FixedWindowClustering(4), FixedWindowClustering(8), FixedWindowClustering(12),\
+								TimeMinutesClustering()]):
+
+					maxi, close = strategy.clusterize(month_crimes, clustering)
+					result_strategy['max'][indx].append(maxi)
+					result_strategy['close'][indx].append(close)
+
+
+######################################################################
+
+
 def main():
 
-	cc = CrimeClustering()
+	cc = CompareClustering()
 	cc.clusterize()
 
 if __name__ == '__main__':
