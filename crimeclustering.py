@@ -472,10 +472,12 @@ class CompareClustering:
 		
 		fig, ax = plt.subplots()
 
-		x = len(result_max[0])
+		x = [x for x in range(len(result_max[0]))]
 
-		for result in result_max:
-			ax.plot(x, result, 'o--')
+		labely = ['Fixed 1', 'Fixed 2', 'Fixed 4', 'Fixed 8', 'Fixed 12', 'Time Minutes']
+
+		for indx, result in enumerate(result_max):
+			ax.plot(x, result, 'o--', label=labely[indx])
 
 		labels = []
 		for month in range(1, 13):
@@ -483,16 +485,16 @@ class CompareClustering:
 			for day in ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']:
 				labels.append(day)
 		
-		#plt.xticks(indx)
-		ax.set_xticks(labels, minor=True)
-		#ax.set(xlabel='time (s)', ylabel='voltage (mV)',
-		#       title='About as simple as it gets, folks')
+		plt.xticks(x, labels)
 		ax.grid()
+
 		plt.show()
 
 	def clusterize(self):
 
 		clustering = Clustering()
+
+		result_strategy = {'max': [[], [], [], [], [], []], 'close': [[], [], [], [], [], []]}
 
 		for month in range(1, 13):
 
@@ -505,8 +507,6 @@ class CompareClustering:
 				day_crimes = self.u.read_data(day)
 
 				month_crimes = day_crimes['2018-' + str(month)]
-
-				result_strategy = {'max': [[], [], [], [], [], []], 'close': [[], [], [], [], [], []]}
 
 				for indx, strategy in enumerate([FixedWindowClustering(1), FixedWindowClustering(2), FixedWindowClustering(4), FixedWindowClustering(8), FixedWindowClustering(12),\
 					TimeMinutesClustering()]):
