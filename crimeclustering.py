@@ -479,13 +479,15 @@ class CompareClustering:
 		for indx, result in enumerate(result_max):
 			ax.plot(x, result, 'o--', label=labely[indx])
 
+		ax.legend()
+
 		labels = []
 		for month in range(1, 13):
 			labels.append(self.u.MONTHS[month])
-			for day in ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']:
-				labels.append(day)
+			#for day in ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']:
+			#	labels.append(day)
 		
-		plt.xticks(x, labels)
+		plt.xticks(range(0, len(result_max[0]), 7), labels)
 		ax.grid()
 
 		plt.show()
