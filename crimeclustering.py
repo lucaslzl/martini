@@ -299,7 +299,7 @@ class FixedWindowClustering:
 
 		return interval
 
-	def metric_close_crimes(self, clusters):
+	def metric_close_crimes(self, clusters, start, end):
 
 		return 0
 
@@ -312,16 +312,13 @@ class FixedWindowClustering:
 			window_crime = self.get_window(month_crimes, i, i+self.size)
 			clusters = clustering.clusterize(window_crime).query('cluster != -1')
 			result_max.append(self.metric_max_interval(clusters))
-			result_close.append(self.metric_close_crimes(clusters))
-
-		input(';')
+			result_close.append(self.metric_close_crimes(clusters, i, i+self.size))
 
 		return np.max(result_max), np.max(result_close)
 
 
 
 class TimeMinutesClustering:
-
 	pass
 
 
