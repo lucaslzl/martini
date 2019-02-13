@@ -2,7 +2,9 @@ import pandas as pd
 import numpy as np
 import os, sys
 import warnings
+
 import matplotlib.pyplot as plt
+from mlxtend.plotting import ecdf
 
 from sklearn.cluster import DBSCAN
 #import hdbscan
@@ -21,9 +23,9 @@ class Clustering:
 	'''
 		Clusterize crime data
 	'''
-	def clusterize(self, data):
+	def clusterize(self, data, ep=0.01):
 		data_formated = self.encode(data.copy())
-		clustering = DBSCAN(eps=0.01, min_samples=3).fit_predict(data_formated)
+		clustering = DBSCAN(eps=ep, min_samples=3).fit_predict(data_formated)
 		#clustering = hdbscan.HDBSCAN(min_cluster_size=10).fit_predict(data_formated)
 		data['cluster'] = clustering
 		return data.sort_values('cluster')
@@ -278,7 +280,7 @@ class FixedWindowClustering:
 				cluster_interval = 0
 				last_datetime = None
 
-				crime_clusters = clusters.query('cluster == ' + str(i)).sort_values(by=['minute', 'hour'])
+				crime_clusters = clusters.query('cluster == ' + str(i)).sort_values(by=['hour', 'minute'])
 
 				for index, row in crime_clusters.iterrows():
 
@@ -302,15 +304,23 @@ class FixedWindowClustering:
 	def metric_close_crimes(self, clusters, start, end):
 		return 0
 
+	def calculate_percentage_max(self, interval, windowsize):
+		return 100 * interval / (windowsize*10)
+
 	def clusterize(self, month_crimes, clustering):
 
-		result_max, result_close = [], []
+		result_max, result_close = [0], [0]
 	
 		for i in range(0, 24, self.size):
+			
 			window_crime = self.get_window(month_crimes, i, i+self.size)
 			clusters = clustering.clusterize(window_crime).query('cluster != -1')
-			result_max.append(self.metric_max_interval(clusters))
-			result_close.append(self.metric_close_crimes(clusters, i, i+self.size))
+			
+			max_interval = self.metric_max_interval(clusters)
+			percentage_interval = self.calculate_percentage_max(max_interval, self.size)
+			result_max.append(percentage_interval)
+
+			#result_close.append(self.metric_close_crimes(clusters, i, i+self.size))
 
 		return np.max(result_max), np.max(result_close)
 
@@ -396,24 +406,21 @@ class TimeMinutesClustering:
 
 			for i in range(0, indx_cluster):
 
-				cluster_interval = 0
-				last_datetime = None
+				crime_clusters = clusters.query('cluster == ' + str(i)).sort_values(by=['hour', 'minute'])
 
-				crime_clusters = clusters.query('cluster == ' + str(i)).sort_values(by=['minute', 'hour'])
+				cluster_interval = 0
+				last_datetime = self.convert_to_minutes(crime_clusters.iloc[0]['hour'], crime_clusters.iloc[0]['minute'])
 
 				for index, row in crime_clusters.iterrows():
 
-					if cluster_interval == 0:
-						last_datetime = self.convert_to_minutes(row['hour'], row['minute'])
-						cluster_interval = 1
+					this_datetime = self.convert_to_minutes(row['hour'], row['minute'])
 
-					else:
-						diff = self.convert_to_minutes(row['hour'], row['minute']) - last_datetime
+					diff = this_datetime - last_datetime
 
-						if diff > cluster_interval:
-							cluster_interval = diff
+					if diff > cluster_interval:
+						cluster_interval = diff
 
-						last_datetime = self.convert_to_minutes(row['hour'], row['minute'])
+					last_datetime = this_datetime
 
 				if cluster_interval > interval:
 					interval = cluster_interval
@@ -423,6 +430,10 @@ class TimeMinutesClustering:
 	def metric_close_crimes(self, clusters, start, end):
 		return 0
 
+	def calculate_percentage_max(self, interval, windowsize):
+		return 100 * interval / (windowsize*10)
+
+
 	def clusterize(self, month_crimes, clustering):
 
 		result_max, result_close = [0], [0]
@@ -431,7 +442,7 @@ class TimeMinutesClustering:
 		for crime in crimes:
 			
 			crimes_filtered = month_crimes.query("type == '%s'" % crime)
-			crimes_filtered = clustering.clusterize(crimes_filtered).query('cluster != -1')
+			#crimes_filtered = clustering.clusterize(crimes_filtered).query('cluster != -1')
 
 			if not crimes_filtered.empty:
 				
@@ -451,10 +462,13 @@ class TimeMinutesClustering:
 						for iw in iterwindow:
 							
 							crimes_window = self.get_window(last_window, iw, crimes_filtered)
-
 							cluster_crime = clustering.clusterize(crimes_window).query('cluster != -1')
-							result_max.append(self.metric_max_interval(cluster_crime))
-							result_close.append(self.metric_close_crimes(cluster_crime, last_window, iw))
+
+							max_interval = self.metric_max_interval(cluster_crime)
+							percentage_interval = self.calculate_percentage_max(max_interval, iw-last_window)
+							result_max.append(percentage_interval)
+
+							#result_close.append(self.metric_close_crimes(cluster_crime, last_window, iw))
 
 							last_window = iw
 
@@ -467,6 +481,12 @@ class CompareClustering:
 
 	def __init__(self):
 		self.u = Util()
+
+	def plot_ecdf(self, result_max):
+
+		for indx, result in enumerate(result_max):
+			ax, _, _ = ecdf(x=result)
+		plt.show()
 
 	def plot_max_metric(self, result_max):
 		
@@ -490,7 +510,7 @@ class CompareClustering:
 		plt.xticks(range(0, len(result_max[0]), 7), labels)
 		ax.grid()
 
-		plt.show()
+		plt.savefig('metric_max_perc.pdf', bbox_inches="tight", format='pdf')
 
 	def clusterize(self):
 
@@ -518,6 +538,7 @@ class CompareClustering:
 					result_strategy['close'][indx].append(close)
 
 		self.plot_max_metric(result_strategy['max'])
+		self.plot_ecdf(result_strategy['max'])
 
 
 ######################################################################
