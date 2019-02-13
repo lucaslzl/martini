@@ -486,7 +486,8 @@ class CompareClustering:
 
 		for indx, result in enumerate(result_max):
 			ax, _, _ = ecdf(x=result)
-		plt.show()
+		
+		plt.savefig('metric_max_ecdf.pdf', bbox_inches="tight", format='pdf')
 
 	def plot_max_metric(self, result_max):
 		
@@ -537,7 +538,7 @@ class CompareClustering:
 					result_strategy['max'][indx].append(maxi)
 					result_strategy['close'][indx].append(close)
 
-		self.plot_max_metric(result_strategy['max'])
+		#self.plot_max_metric(result_strategy['max'])
 		self.plot_ecdf(result_strategy['max'])
 
 
