@@ -514,7 +514,7 @@ class CompareClustering:
 				else:
 					labels.append('')
 		
-		plt.yticks(np.arange(0, 100, 10.0))
+		#plt.yticks(np.arange(0, 100, 10))
 		plt.xticks(np.arange(0, len(result_max[0])), labels, rotation=50)
 		ax.grid('off', axis='x')
 		ax.grid('on', axis='y')
