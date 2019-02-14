@@ -305,7 +305,7 @@ class FixedWindowClustering:
 		return 0
 
 	def calculate_percentage_max(self, interval, windowsize):
-		return 100 * interval / (windowsize*10)
+		return 100 * interval / (windowsize*60)
 
 	def clusterize(self, month_crimes, clustering):
 
@@ -317,8 +317,8 @@ class FixedWindowClustering:
 			clusters = clustering.clusterize(window_crime).query('cluster != -1')
 			
 			max_interval = self.metric_max_interval(clusters)
-			percentage_interval = self.calculate_percentage_max(max_interval, self.size)
-			result_max.append(percentage_interval)
+			#percentage_interval = self.calculate_percentage_max(max_interval, self.size)
+			result_max.append(max_interval)
 
 			#result_close.append(self.metric_close_crimes(clusters, i, i+self.size))
 
@@ -330,6 +330,7 @@ class TimeMinutesClustering:
 
 	def __init__(self):
 		self.u = Util()
+		self.max_size = 0
 
 	def make_gauss(self, N=1, sig=1, mu=0):
 		return lambda xt: N/(sig * (2*np.pi)**.5) * np.e ** (-(xt-mu)**2/(1000 * sig**2))
@@ -461,16 +462,21 @@ class TimeMinutesClustering:
 						last_window = window[0]
 						for iw in iterwindow:
 							
+							if iw-last_window > self.max_size:
+								self.max_size = iw-last_window
+
 							crimes_window = self.get_window(last_window, iw, crimes_filtered)
 							cluster_crime = clustering.clusterize(crimes_window).query('cluster != -1')
 
 							max_interval = self.metric_max_interval(cluster_crime)
-							percentage_interval = self.calculate_percentage_max(max_interval, iw-last_window)
-							result_max.append(percentage_interval)
+							#percentage_interval = self.calculate_percentage_max(max_interval, iw-last_window)
+							result_max.append(max_interval)
 
 							#result_close.append(self.metric_close_crimes(cluster_crime, last_window, iw))
 
 							last_window = iw
+
+		print(self.max_size)
 
 		return np.max(result_max), np.max(result_close)
 
@@ -485,7 +491,7 @@ class CompareClustering:
 	def plot_ecdf(self, result_max):
 
 		for indx, result in enumerate(result_max):
-			ax, _, _ = ecdf(x=result)
+			ax, _, _ = ecdf(x=result, ecdf_marker='s')
 		
 		plt.savefig('metric_max_ecdf.pdf', bbox_inches="tight", format='pdf')
 
@@ -494,24 +500,26 @@ class CompareClustering:
 		fig, ax = plt.subplots()
 
 		x = [x for x in range(len(result_max[0]))]
-
 		labely = ['Fixed 1', 'Fixed 2', 'Fixed 4', 'Fixed 8', 'Fixed 12', 'Time Minutes']
-
 		for indx, result in enumerate(result_max):
-			ax.plot(x, result, 'o--', label=labely[indx])
-
+			ax.plot(x, result, 'o--', label=labely[indx], alpha=0.7, markersize=5)
 		ax.legend()
 
 		labels = []
 		for month in range(1, 13):
-			labels.append(self.u.MONTHS[month])
-			#for day in ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']:
-			#	labels.append(day)
+			#labels.append(self.u.MONTHS[month])
+			for day in ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']:
+				if day is 'monday':
+					labels.append(self.u.MONTHS[month])
+				else:
+					labels.append('')
 		
-		plt.xticks(range(0, len(result_max[0]), 7), labels)
-		ax.grid()
+		plt.yticks(np.arange(0, 100, 10.0))
+		plt.xticks(np.arange(0, len(result_max[0])), labels, rotation=50)
+		ax.grid('off', axis='x')
+		ax.grid('on', axis='y')
 
-		plt.savefig('metric_max_perc.pdf', bbox_inches="tight", format='pdf')
+		plt.savefig('metric_max.pdf', bbox_inches="tight", format='pdf')
 
 	def clusterize(self):
 
@@ -538,8 +546,8 @@ class CompareClustering:
 					result_strategy['max'][indx].append(maxi)
 					result_strategy['close'][indx].append(close)
 
-		#self.plot_max_metric(result_strategy['max'])
-		self.plot_ecdf(result_strategy['max'])
+		self.plot_max_metric(result_strategy['max'])
+		#self.plot_ecdf(result_strategy['max'])
 
 
 ######################################################################
