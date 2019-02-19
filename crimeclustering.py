@@ -10,6 +10,9 @@ from sklearn.cluster import DBSCAN
 #import hdbscan
 from scipy.signal import find_peaks
 
+import threading
+import time
+
 
 class Clustering:
 
@@ -330,7 +333,6 @@ class TimeMinutesClustering:
 
 	def __init__(self):
 		self.u = Util()
-		self.max_size = 0
 
 	def make_gauss(self, N=1, sig=1, mu=0):
 		return lambda xt: N/(sig * (2*np.pi)**.5) * np.e ** (-(xt-mu)**2/(1000 * sig**2))
@@ -461,9 +463,6 @@ class TimeMinutesClustering:
 						next(iterwindow)
 						last_window = window[0]
 						for iw in iterwindow:
-							
-							if iw-last_window > self.max_size:
-								self.max_size = iw-last_window
 
 							crimes_window = self.get_window(last_window, iw, crimes_filtered)
 							cluster_crime = clustering.clusterize(crimes_window).query('cluster != -1')
@@ -476,12 +475,25 @@ class TimeMinutesClustering:
 
 							last_window = iw
 
-		print(self.max_size)
-
 		return np.max(result_max), np.max(result_close)
 
 
 ######################################################################
+
+class CallClusterize(threading.Thread):
+
+	def __init__(self, indx, strategy, month_crimes, clustering, result_strategy):
+		threading.Thread.__init__(self)
+		self.indx = indx
+		self.strategy = strategy
+		self.month_crimes = month_crimes
+		self.clustering = clustering
+		self.result_strategy = result_strategy
+
+	def run(self):
+		maxi, close = self.strategy.clusterize(self.month_crimes, self.clustering)
+		self.result_strategy['max'][self.indx].append(maxi)
+		self.result_strategy['close'][self.indx].append(close)
 
 class CompareClustering:
 
@@ -491,7 +503,7 @@ class CompareClustering:
 	def plot_ecdf(self, result_max):
 
 		for indx, result in enumerate(result_max):
-			ax, _, _ = ecdf(x=result, ecdf_marker='s')
+			ax, _, _ = ecdf(x=result)
 		
 		plt.savefig('metric_max_ecdf.pdf', bbox_inches="tight", format='pdf')
 
@@ -536,18 +548,27 @@ class CompareClustering:
 				print('### ' + day)
 
 				day_crimes = self.u.read_data(day)
-
 				month_crimes = day_crimes['2018-' + str(month)]
+
+				#threads = []
 
 				for indx, strategy in enumerate([FixedWindowClustering(1), FixedWindowClustering(2), FixedWindowClustering(4), FixedWindowClustering(8), FixedWindowClustering(12),\
 					TimeMinutesClustering()]):
+
+					#thread = CallClusterize(indx, strategy, month_crimes, clustering, result_strategy)
+					#thread.start()
+
+					#threads.append(thread)
 
 					maxi, close = strategy.clusterize(month_crimes, clustering)
 					result_strategy['max'][indx].append(maxi)
 					result_strategy['close'][indx].append(close)
 
-		self.plot_max_metric(result_strategy['max'])
-		#self.plot_ecdf(result_strategy['max'])
+				#for t in threads:
+    			#	t.join()
+
+		#self.plot_max_metric(result_strategy['max'])
+		self.plot_ecdf(result_strategy['max'])
 
 
 ######################################################################
