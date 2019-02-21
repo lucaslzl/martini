@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 from mlxtend.plotting import ecdf
 
 from sklearn.cluster import DBSCAN
-#import hdbscan
+import hdbscan
 from scipy.signal import find_peaks
 
 import threading
@@ -29,7 +29,7 @@ class Clustering:
 	def clusterize(self, data, ep=0.01):
 		data_formated = self.encode(data.copy())
 		clustering = DBSCAN(eps=ep, min_samples=3).fit_predict(data_formated)
-		#clustering = hdbscan.HDBSCAN(min_cluster_size=10).fit_predict(data_formated)
+		#clustering = hdbscan.HDBSCAN(min_cluster_size=3).fit_predict(data_formated)
 		data['cluster'] = clustering
 		return data.sort_values('cluster')
 
@@ -563,7 +563,7 @@ class CompareClustering:
 					maxi, close = strategy.clusterize(month_crimes, clustering)
 					result_strategy['max'][indx].append(maxi)
 					result_strategy['close'][indx].append(close)
-
+					
 				#for t in threads:
     			#	t.join()
 
