@@ -304,15 +304,12 @@ class FixedWindowClustering:
 
 		return interval
 
-	def metric_close_crimes(self, clusters, start, end):
-		return 0
-
 	def calculate_percentage_max(self, interval, windowsize):
 		return 100 * interval / (windowsize*60)
 
 	def clusterize(self, month_crimes, clustering):
 
-		result_max, result_close = [0], [0]
+		result_max = [0]
 	
 		for i in range(0, 24, self.size):
 			
@@ -323,9 +320,7 @@ class FixedWindowClustering:
 			#percentage_interval = self.calculate_percentage_max(max_interval, self.size)
 			result_max.append(max_interval)
 
-			#result_close.append(self.metric_close_crimes(clusters, i, i+self.size))
-
-		return np.max(result_max), np.max(result_close)
+		return np.max(result_max)
 
 
 
@@ -429,9 +424,6 @@ class TimeMinutesClustering:
 					interval = cluster_interval
 
 		return interval
-	
-	def metric_close_crimes(self, clusters, start, end):
-		return 0
 
 	def calculate_percentage_max(self, interval, windowsize):
 		return 100 * interval / (windowsize*10)
@@ -439,13 +431,12 @@ class TimeMinutesClustering:
 
 	def clusterize(self, month_crimes, clustering):
 
-		result_max, result_close = [0], [0]
+		result_max = [0]
 		crimes = month_crimes.groupby('type').all().index
 
 		for crime in crimes:
 			
 			crimes_filtered = month_crimes.query("type == '%s'" % crime)
-			#crimes_filtered = clustering.clusterize(crimes_filtered).query('cluster != -1')
 
 			if not crimes_filtered.empty:
 				
@@ -471,29 +462,31 @@ class TimeMinutesClustering:
 							#percentage_interval = self.calculate_percentage_max(max_interval, iw-last_window)
 							result_max.append(max_interval)
 
-							#result_close.append(self.metric_close_crimes(cluster_crime, last_window, iw))
-
 							last_window = iw
 
-		return np.max(result_max), np.max(result_close)
+		return np.max(result_max)
 
 
 ######################################################################
 
 class CallClusterize(threading.Thread):
 
-	def __init__(self, indx, strategy, month_crimes, clustering, result_strategy):
+	def __init__(self, indx, strategy, month_crimes, clustering):
 		threading.Thread.__init__(self)
 		self.indx = indx
 		self.strategy = strategy
 		self.month_crimes = month_crimes
 		self.clustering = clustering
-		self.result_strategy = result_strategy
+
+		self.maxi = 0
 
 	def run(self):
-		maxi, close = self.strategy.clusterize(self.month_crimes, self.clustering)
-		self.result_strategy['max'][self.indx].append(maxi)
-		self.result_strategy['close'][self.indx].append(close)
+		maxi = self.strategy.clusterize(self.month_crimes, self.clustering)
+		self.maxi = maxi
+
+	def get(self):
+		return self.maxi
+
 
 class CompareClustering:
 
@@ -535,9 +528,7 @@ class CompareClustering:
 
 	def clusterize(self):
 
-		clustering = Clustering()
-
-		result_strategy = {'max': [[], [], [], [], [], []], 'close': [[], [], [], [], [], []]}
+		result_strategy = [[], [], [], [], [], []]
 
 		for month in range(1, 13):
 
@@ -550,25 +541,32 @@ class CompareClustering:
 				day_crimes = self.u.read_data(day)
 				month_crimes = day_crimes['2018-' + str(month)]
 
-				#threads = []
+				threads = []
+
+				start = time.clock()
 
 				for indx, strategy in enumerate([FixedWindowClustering(1), FixedWindowClustering(2), FixedWindowClustering(4), FixedWindowClustering(8), FixedWindowClustering(12),\
 					TimeMinutesClustering()]):
 
-					#thread = CallClusterize(indx, strategy, month_crimes, clustering, result_strategy)
-					#thread.start()
+					thread = CallClusterize(indx, strategy, month_crimes.copy(), Clustering())
+					thread.start()
 
-					#threads.append(thread)
+					threads.append(thread)
 
-					maxi, close = strategy.clusterize(month_crimes, clustering)
-					result_strategy['max'][indx].append(maxi)
-					result_strategy['close'][indx].append(close)
-					
-				#for t in threads:
-    			#	t.join()
+					#maxi = strategy.clusterize(month_crimes, clustering)
+					#result_strategy[indx].append(maxi)
 
-		#self.plot_max_metric(result_strategy['max'])
-		self.plot_ecdf(result_strategy['max'])
+				for indx, t in enumerate(threads):
+					t.join()
+					maxi = t.get()
+					result_strategy[indx].append(maxi)
+
+				end = time.clock()
+				print(end-start)
+				#exit()
+
+		#self.plot_max_metric(result_strategy)
+		#self.plot_ecdf(result_strategy)
 
 
 ######################################################################
