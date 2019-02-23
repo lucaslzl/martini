@@ -8,7 +8,7 @@ from mlxtend.plotting import ecdf
 
 from scipy.signal import find_peaks
 from sklearn.cluster import DBSCAN
-import hdbscan
+#import hdbscan
 
 import threading
 import time
@@ -423,23 +423,27 @@ class TimeMinutesClustering:
 
 	def identify_window(self, window_scores, peaks):
 
-		print('Peaks: ', peaks)
-
-		iterpeaks = iter(peaks)
-		next(iterpeaks)
-		last_peak = peaks[0]
-
+		last_peak = 0
 		apeaks = []
 
-		for peak in iterpeaks:
+		peaks.append(len(window_scores)-1)
 
-			apeaks.append(last_peak + np.argmin(window_scores[last_peak:peak]))
-			last_peak = peak
+		for peak in peaks:
 
-		if len(apeaks) > 0 and apeaks[-1] != len(window_scores):
-			apeaks.append(len(window_scores))
+			mini = last_peak + np.argmin(window_scores[last_peak:peak])
 
-		return self.identify_zeros(window_scores, [0] + apeaks)
+			if window_scores[mini] != 0.0:
+				apeaks.append(mini)
+				last_peak = peak
+			else:
+				apeaks.append(mini-1)
+				zero_indx = mini
+				while zero_indx < len(window_scores) and window_scores[zero_indx] == 0.0:
+					zero_indx += 1
+				apeaks.append(zero_indx-1)
+				last_peak = zero_indx
+
+		return apeaks
 
 	def get_window(self, start, end, crimes_filtered):
 
@@ -508,7 +512,7 @@ class TimeMinutesClustering:
 				
 				window_scores = self.calculate_score(crimes_filtered)
 
-				peaks = find_peaks(window_scores, distance=6)[0]
+				peaks = find_peaks(window_scores, distance=6)[0].tolist()
 
 				if len(peaks) > 0:
 				
@@ -522,13 +526,15 @@ class TimeMinutesClustering:
 						for iw in iterwindow:
 
 							crimes_window = self.get_window(last_window, iw, crimes_filtered)
-							cluster_crime = clustering.clusterize(crimes_window).query('cluster != -1')
 
-							max_interval = self.metric_max_interval(cluster_crime)
-							#percentage_interval = self.calculate_percentage_max(max_interval, iw-last_window)
-							result_max.append(max_interval)
+							if len(crimes_window) > 0:
+								cluster_crime = clustering.clusterize(crimes_window).query('cluster != -1')
 
-							last_window = iw
+								max_interval = self.metric_max_interval(cluster_crime)
+								#percentage_interval = self.calculate_percentage_max(max_interval, iw-last_window)
+								result_max.append(max_interval)
+
+								last_window = iw
 
 		return np.max(result_max)
 
