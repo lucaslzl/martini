@@ -375,7 +375,6 @@ class TimeMinutesClustering:
 		maxi = np.amax(window_scores)
 		mini = np.amin(window_scores)
 
-
 		for indx, w in enumerate(window_scores):
 			window_scores[indx] = (w - mini) / (maxi - mini)
 
@@ -397,29 +396,6 @@ class TimeMinutesClustering:
 				window_scores.append(np.sum(state_score))
 
 		return self.normalize(window_scores)
-
-	def identify_zeros(self, window_scores, apeaks):
-
-		filtered_apeaks = []
-
-		print('Apeaks: ', apeaks)
-
-		for apeak in apeaks:
-
-			if window_scores[apeak] == 0.0:
-				for i in range(apeak, len(window_scores)):
-					if window_scores[i] != 0.0:
-						filtered_apeaks.append(i-1)
-						break
-			else:
-				filtered_apeaks.append(apeak)
-
-		print('Window_scores: ', window_scores)
-		print('Final window: ', filtered_apeaks)
-		input(';')
-
-		return filtered_apeaks
-
 
 	def identify_window(self, window_scores, peaks):
 
