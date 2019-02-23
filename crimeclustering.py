@@ -6,9 +6,9 @@ import warnings
 import matplotlib.pyplot as plt
 from mlxtend.plotting import ecdf
 
+from scipy.signal import find_peaks
 from sklearn.cluster import DBSCAN
 import hdbscan
-from scipy.signal import find_peaks
 
 import threading
 import time
@@ -127,6 +127,16 @@ class CrimeClustering:
 
 		return float('%.5f' % (score))
 
+	def normalize(self, window_scores):
+
+		maxi = np.amax(window_scores)
+		mini = np.amin(window_scores)
+
+
+		for indx, w in enumerate(window_scores):
+			window_scores[indx] = (w - mini) / (maxi - mini)
+
+		return window_scores
 
 	def calculate_score(self, crimes_filtered):
 
@@ -142,15 +152,16 @@ class CrimeClustering:
 
 				window_scores.append(np.sum(state_score))
 
-		return window_scores
+		return self.normalize(window_scores)
 
 	def plot_to_see(self, window_scores):
 
 		plt.figure(1)
 		plt.subplot(211)
 
-		#for w in window_scores:
-		plt.plot(range(0, 144), window_scores, '--')
+		for w in window_scores:
+			plt.plot(range(0, 144), w, '--')
+			
 		plt.xticks(np.arange(0, 145, 6), np.arange(0, 25))
 		plt.grid(True)
 
@@ -225,6 +236,8 @@ class CrimeClustering:
 				df_crimes = day_crimes['2018-' + str(month)]
 				crimes = df_crimes.groupby('type').all().index
 
+				windows = []
+
 				for crime in crimes:
 					
 					crimes_filtered = df_crimes.query("type == '%s'" % crime)
@@ -233,27 +246,31 @@ class CrimeClustering:
 					if not crimes_filtered.empty:
 						
 						window_scores = self.calculate_score(crimes_filtered)
+						windows.append(window_scores)
 
-						peaks = find_peaks(window_scores, distance=9)[0]
+				self.plot_to_see(windows)
+				input(';')
 
-						if len(peaks) > 0:
-						
-							window = self.identify_window(window_scores, peaks)
+				'''peaks = find_peaks(window_scores, distance=9)[0]
 
-							if len(window) > 0:
-								iterwindow = iter(window)
-								next(iterwindow)
-								last_window = window[0]
-								for iw in iterwindow:
-									
-									crimes_window = self.get_window(last_window, iw, crimes_filtered)
+				if len(peaks) > 0:
+				
+					window = self.identify_window(window_scores, peaks)
 
-									cluster_crime = clustering.clusterize(crimes_window)
-									clusters = self.u.format_clusters(cluster_crime)
+					if len(window) > 0:
+						iterwindow = iter(window)
+						next(iterwindow)
+						last_window = window[0]
+						for iw in iterwindow:
+							
+							crimes_window = self.get_window(last_window, iw, crimes_filtered)
 
-									#self.write_clusters(clusters, month, day, last_window, crime)
-									
-									last_window = iw
+							cluster_crime = clustering.clusterize(crimes_window)
+							clusters = self.u.format_clusters(cluster_crime)
+
+							#self.write_clusters(clusters, month, day, last_window, crime)
+							
+							last_window = iw'''
 
 		
 ######################################################################
@@ -310,15 +327,25 @@ class FixedWindowClustering:
 	def clusterize(self, month_crimes, clustering):
 
 		result_max = [0]
+
+		crimes = month_crimes.groupby('type').all().index
+
+		for crime in crimes:
+			
+			crimes_filtered = month_crimes.query("type == '%s'" % crime)
+
+			if not crimes_filtered.empty:
 	
-		for i in range(0, 24, self.size):
-			
-			window_crime = self.get_window(month_crimes, i, i+self.size)
-			clusters = clustering.clusterize(window_crime).query('cluster != -1')
-			
-			max_interval = self.metric_max_interval(clusters)
-			#percentage_interval = self.calculate_percentage_max(max_interval, self.size)
-			result_max.append(max_interval)
+				for i in range(0, 24, self.size):
+					
+					window_crime = self.get_window(crimes_filtered, i, i+self.size)
+
+					if len(window_crime) > 0:
+						clusters = clustering.clusterize(window_crime).query('cluster != -1')
+						
+						max_interval = self.metric_max_interval(clusters)
+						#percentage_interval = self.calculate_percentage_max(max_interval, self.size)
+						result_max.append(max_interval)
 
 		return np.max(result_max)
 
@@ -343,6 +370,17 @@ class TimeMinutesClustering:
 
 		return float('%.5f' % (score))
 
+	def normalize(self, window_scores):
+
+		maxi = np.amax(window_scores)
+		mini = np.amin(window_scores)
+
+
+		for indx, w in enumerate(window_scores):
+			window_scores[indx] = (w - mini) / (maxi - mini)
+
+		return window_scores
+
 
 	def calculate_score(self, crimes_filtered):
 
@@ -358,9 +396,34 @@ class TimeMinutesClustering:
 
 				window_scores.append(np.sum(state_score))
 
-		return window_scores
+		return self.normalize(window_scores)
+
+	def identify_zeros(self, window_scores, apeaks):
+
+		filtered_apeaks = []
+
+		print('Apeaks: ', apeaks)
+
+		for apeak in apeaks:
+
+			if window_scores[apeak] == 0.0:
+				for i in range(apeak, len(window_scores)):
+					if window_scores[i] != 0.0:
+						filtered_apeaks.append(i-1)
+						break
+			else:
+				filtered_apeaks.append(apeak)
+
+		print('Window_scores: ', window_scores)
+		print('Final window: ', filtered_apeaks)
+		input(';')
+
+		return filtered_apeaks
+
 
 	def identify_window(self, window_scores, peaks):
+
+		print('Peaks: ', peaks)
 
 		iterpeaks = iter(peaks)
 		next(iterpeaks)
@@ -373,7 +436,10 @@ class TimeMinutesClustering:
 			apeaks.append(last_peak + np.argmin(window_scores[last_peak:peak]))
 			last_peak = peak
 
-		return [0] + apeaks
+		if len(apeaks) > 0 and apeaks[-1] != len(window_scores):
+			apeaks.append(len(window_scores))
+
+		return self.identify_zeros(window_scores, [0] + apeaks)
 
 	def get_window(self, start, end, crimes_filtered):
 
@@ -442,7 +508,7 @@ class TimeMinutesClustering:
 				
 				window_scores = self.calculate_score(crimes_filtered)
 
-				peaks = find_peaks(window_scores, distance=9)[0]
+				peaks = find_peaks(window_scores, distance=6)[0]
 
 				if len(peaks) > 0:
 				
@@ -545,8 +611,9 @@ class CompareClustering:
 
 				start = time.clock()
 
-				for indx, strategy in enumerate([FixedWindowClustering(1), FixedWindowClustering(2), FixedWindowClustering(4), FixedWindowClustering(8), FixedWindowClustering(12),\
-					TimeMinutesClustering()]):
+				#for indx, strategy in enumerate([FixedWindowClustering(1), FixedWindowClustering(2), FixedWindowClustering(4), FixedWindowClustering(8), FixedWindowClustering(12),\
+				#	TimeMinutesClustering()]):
+				for indx, strategy in enumerate([TimeMinutesClustering()]):
 
 					thread = CallClusterize(indx, strategy, month_crimes.copy(), Clustering())
 					thread.start()
