@@ -488,7 +488,7 @@ class TimeMinutesClustering:
 				
 				window_scores = self.calculate_score(crimes_filtered)
 
-				peaks = find_peaks(window_scores, distance=6)[0].tolist()
+				peaks = find_peaks(window_scores, distance=3)[0].tolist()
 
 				if len(peaks) > 0:
 				
@@ -591,11 +591,9 @@ class CompareClustering:
 
 				threads = []
 
-				start = time.clock()
-
-				#for indx, strategy in enumerate([FixedWindowClustering(1), FixedWindowClustering(2), FixedWindowClustering(4), FixedWindowClustering(8), FixedWindowClustering(12),\
-				#	TimeMinutesClustering()]):
-				for indx, strategy in enumerate([TimeMinutesClustering()]):
+				for indx, strategy in enumerate([FixedWindowClustering(1), FixedWindowClustering(2), FixedWindowClustering(4), FixedWindowClustering(8), FixedWindowClustering(12),\
+					TimeMinutesClustering()]):
+					#for indx, strategy in enumerate([TimeMinutesClustering()]):
 
 					thread = CallClusterize(indx, strategy, month_crimes.copy(), Clustering())
 					thread.start()
@@ -610,12 +608,8 @@ class CompareClustering:
 					maxi = t.get()
 					result_strategy[indx].append(maxi)
 
-				end = time.clock()
-				print(end-start)
-				#exit()
-
 		#self.plot_max_metric(result_strategy)
-		#self.plot_ecdf(result_strategy)
+		self.plot_ecdf(result_strategy)
 
 
 ######################################################################
