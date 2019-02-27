@@ -167,6 +167,21 @@ class CrimeClustering:
 
 		plt.show()
 
+	def plot_to_save(self, window_scores, name):
+
+		plt.clf()
+		plt.subplot(211)
+
+		plt.plot(range(0, 144), window_scores, '--')
+			
+		plt.xticks(np.arange(0, 145, 6), np.arange(0, 25))
+		#plt.grid(True)
+
+		plt.grid('off', axis='x')
+		plt.grid('on', axis='y')
+
+		plt.savefig('plots/' + str(name) + '.pdf', bbox_inches="tight", format='pdf')
+
 	def identify_window(self, window_scores, peaks):
 
 
@@ -241,36 +256,35 @@ class CrimeClustering:
 				for crime in crimes:
 					
 					crimes_filtered = df_crimes.query("type == '%s'" % crime)
-					crimes_filtered = clustering.clusterize(crimes_filtered).query('cluster != -1')	
+					crimes_filtered = clustering.clusterize(crimes_filtered).query('cluster != -1')
 
 					if not crimes_filtered.empty:
 						
 						window_scores = self.calculate_score(crimes_filtered)
 						windows.append(window_scores)
 
-				self.plot_to_see(windows)
-				input(';')
-
-				'''peaks = find_peaks(window_scores, distance=9)[0]
-
-				if len(peaks) > 0:
+						#self.plot_to_save(window_scores, crime)
 				
-					window = self.identify_window(window_scores, peaks)
+						peaks = find_peaks(window_scores, distance=9)[0]
 
-					if len(window) > 0:
-						iterwindow = iter(window)
-						next(iterwindow)
-						last_window = window[0]
-						for iw in iterwindow:
-							
-							crimes_window = self.get_window(last_window, iw, crimes_filtered)
+						if len(peaks) > 0:
+						
+							window = self.identify_window(window_scores, peaks)
 
-							cluster_crime = clustering.clusterize(crimes_window)
-							clusters = self.u.format_clusters(cluster_crime)
+							if len(window) > 0:
+								iterwindow = iter(window)
+								next(iterwindow)
+								last_window = window[0]
+								for iw in iterwindow:
+									
+									crimes_window = self.get_window(last_window, iw, crimes_filtered)
 
-							#self.write_clusters(clusters, month, day, last_window, crime)
-							
-							last_window = iw'''
+									cluster_crime = clustering.clusterize(crimes_window)
+									clusters = self.u.format_clusters(cluster_crime)
+
+									#self.write_clusters(clusters, month, day, last_window, crime)
+									
+									last_window = iw
 
 		
 ######################################################################
@@ -507,6 +521,13 @@ class TimeMinutesClustering:
 								cluster_crime = clustering.clusterize(crimes_window).query('cluster != -1')
 
 								max_interval = self.metric_max_interval(cluster_crime)
+								if max_interval > 200:
+									print('\n\n')
+									print(max_interval)
+									print(last_window, iw)
+									print(cluster_crime.head())
+									print('\n\n')
+									input(';')
 								#percentage_interval = self.calculate_percentage_max(max_interval, iw-last_window)
 								result_max.append(max_interval)
 
@@ -591,17 +612,14 @@ class CompareClustering:
 
 				threads = []
 
-				for indx, strategy in enumerate([FixedWindowClustering(1), FixedWindowClustering(2), FixedWindowClustering(4), FixedWindowClustering(8), FixedWindowClustering(12),\
-					TimeMinutesClustering()]):
-					#for indx, strategy in enumerate([TimeMinutesClustering()]):
+				#for indx, strategy in enumerate([FixedWindowClustering(1), FixedWindowClustering(2), FixedWindowClustering(4), FixedWindowClustering(8), FixedWindowClustering(12),\
+				#	TimeMinutesClustering()]):
+				for indx, strategy in enumerate([TimeMinutesClustering()]):
 
 					thread = CallClusterize(indx, strategy, month_crimes.copy(), Clustering())
 					thread.start()
 
 					threads.append(thread)
-
-					#maxi = strategy.clusterize(month_crimes, clustering)
-					#result_strategy[indx].append(maxi)
 
 				for indx, t in enumerate(threads):
 					t.join()
@@ -609,7 +627,7 @@ class CompareClustering:
 					result_strategy[indx].append(maxi)
 
 		#self.plot_max_metric(result_strategy)
-		self.plot_ecdf(result_strategy)
+		#self.plot_ecdf(result_strategy)
 
 
 ######################################################################
