@@ -8,7 +8,7 @@ from mlxtend.plotting import ecdf
 
 from scipy.signal import find_peaks
 from sklearn.cluster import DBSCAN
-#import hdbscan
+import hdbscan
 
 import threading
 import time
@@ -27,10 +27,12 @@ class Clustering:
 		Clusterize crime data
 	'''
 	def clusterize(self, data, ep=0.01):
+
 		data_formated = self.encode(data.copy())
-		clustering = DBSCAN(eps=ep, min_samples=3).fit_predict(data_formated)
-		#clustering = hdbscan.HDBSCAN(min_cluster_size=3).fit_predict(data_formated)
+		#clustering = DBSCAN(eps=ep, min_samples=3).fit_predict(data_formated)
+		clustering = hdbscan.HDBSCAN(min_cluster_size=3).fit_predict(data_formated)
 		data['cluster'] = clustering
+		
 		return data.sort_values('cluster')
 
 
@@ -168,7 +170,7 @@ class FixedWindowClustering:
 					
 					window_crime = self.get_window(crimes_filtered, i, i+self.size)
 
-					if len(window_crime) > 0:
+					if len(window_crime) >= 3:
 						clusters = clustering.clusterize(window_crime).query('cluster != -1')
 						
 						max_interval = self.metric_max_interval(clusters)
@@ -358,33 +360,31 @@ class TimeMinutesClustering:
 		for crime in crimes:
 			
 			crimes_filtered = month_crimes.query("type == '%s'" % crime)
-
-			if not crimes_filtered.empty:
 				
-				window_scores = self.calculate_score(crimes_filtered)
+			window_scores = self.calculate_score(crimes_filtered)
 
-				peaks = find_peaks(window_scores, distance=3)[0].tolist()
+			peaks = find_peaks(window_scores, distance=3)[0].tolist()
 
-				if len(peaks) > 0:
-				
-					window = self.identify_window(window_scores, peaks)
+			if len(peaks) > 0:
+			
+				window = self.identify_window(window_scores, peaks)
 
-					if len(window) > 0:
+				if len(window) > 0:
 
-						iterwindow = iter(window)
-						next(iterwindow)
-						last_window = window[0]
-						for iw in iterwindow:
+					iterwindow = iter(window)
+					next(iterwindow)
+					last_window = window[0]
+					for iw in iterwindow:
 
-							crimes_window = self.get_window(last_window, iw, crimes_filtered)
+						crimes_window = self.get_window(last_window, iw, crimes_filtered)
 
-							if len(crimes_window) > 0:
-								cluster_crime = clustering.clusterize(crimes_window).query('cluster != -1')
+						if len(crimes_window) >= 3:
+							cluster_crime = clustering.clusterize(crimes_window).query('cluster != -1')
 
-								max_interval = self.metric_max_interval(cluster_crime)
-								result_max.append(max_interval)
+							max_interval = self.metric_max_interval(cluster_crime)
+							result_max.append(max_interval)
 
-								last_window = iw
+							last_window = iw
 
 		return np.max(result_max)
 
@@ -456,7 +456,7 @@ class CompareClustering:
 
 			print('#' + self.u.MONTHS[month])
 
-			for day in ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']:
+			for day in ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']:
 
 				print('### ' + day)
 
