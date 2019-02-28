@@ -114,7 +114,7 @@ class CrimeClustering:
 		self.u = Util()
 
 	def make_gauss(self, N=1, sig=1, mu=0):
-		return lambda xt: N/(sig * (2*np.pi)**.5) * np.e ** (-(xt-mu)**2/(1000 * sig**2))
+		return lambda x: N/(sig * (2*np.pi)**.5) * np.e ** (-(x-mu)**2/(410 * sig**2))
 
 	def calculate_difference(self, hour, minute, ref_hour, ref_minute):
 
@@ -131,7 +131,6 @@ class CrimeClustering:
 
 		maxi = np.amax(window_scores)
 		mini = np.amin(window_scores)
-
 
 		for indx, w in enumerate(window_scores):
 			window_scores[indx] = (w - mini) / (maxi - mini)
@@ -422,16 +421,19 @@ class TimeMinutesClustering:
 
 			mini = last_peak + np.argmin(window_scores[last_peak:peak])
 
-			if window_scores[mini] != 0.0:
+			if window_scores[mini] == 0.0:
 				apeaks.append(mini)
-				last_peak = peak
-			else:
-				apeaks.append(mini-1)
+
 				zero_indx = mini
 				while zero_indx < len(window_scores) and window_scores[zero_indx] == 0.0:
 					zero_indx += 1
+				
 				apeaks.append(zero_indx-1)
-				last_peak = zero_indx
+
+			else:
+				apeaks.append(mini)
+
+			last_peak = peak
 
 		return apeaks
 
@@ -488,7 +490,6 @@ class TimeMinutesClustering:
 	def calculate_percentage_max(self, interval, windowsize):
 		return 100 * interval / (windowsize*10)
 
-
 	def clusterize(self, month_crimes, clustering):
 
 		result_max = [0]
@@ -521,14 +522,6 @@ class TimeMinutesClustering:
 								cluster_crime = clustering.clusterize(crimes_window).query('cluster != -1')
 
 								max_interval = self.metric_max_interval(cluster_crime)
-								if max_interval > 200:
-									print('\n\n')
-									print(max_interval)
-									print(last_window, iw)
-									print(cluster_crime.head())
-									print('\n\n')
-									input(';')
-								#percentage_interval = self.calculate_percentage_max(max_interval, iw-last_window)
 								result_max.append(max_interval)
 
 								last_window = iw
@@ -581,14 +574,12 @@ class CompareClustering:
 
 		labels = []
 		for month in range(1, 13):
-			#labels.append(self.u.MONTHS[month])
 			for day in ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']:
 				if day is 'monday':
 					labels.append(self.u.MONTHS[month])
 				else:
 					labels.append('')
 		
-		#plt.yticks(np.arange(0, 100, 10))
 		plt.xticks(np.arange(0, len(result_max[0])), labels, rotation=50)
 		ax.grid('off', axis='x')
 		ax.grid('on', axis='y')
@@ -612,9 +603,8 @@ class CompareClustering:
 
 				threads = []
 
-				#for indx, strategy in enumerate([FixedWindowClustering(1), FixedWindowClustering(2), FixedWindowClustering(4), FixedWindowClustering(8), FixedWindowClustering(12),\
-				#	TimeMinutesClustering()]):
-				for indx, strategy in enumerate([TimeMinutesClustering()]):
+				for indx, strategy in enumerate([FixedWindowClustering(1), FixedWindowClustering(2), FixedWindowClustering(4), FixedWindowClustering(8), FixedWindowClustering(12),\
+					TimeMinutesClustering()]):
 
 					thread = CallClusterize(indx, strategy, month_crimes.copy(), Clustering())
 					thread.start()
@@ -626,7 +616,7 @@ class CompareClustering:
 					maxi = t.get()
 					result_strategy[indx].append(maxi)
 
-		#self.plot_max_metric(result_strategy)
+		self.plot_max_metric(result_strategy)
 		#self.plot_ecdf(result_strategy)
 
 
