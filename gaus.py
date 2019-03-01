@@ -20,10 +20,10 @@ def main():
     c = ['b','r','y','g']
 
     for sig, mu, color in zip(s, m, c):
-        #if color == 'r':
-        gauss = make_gauss(1, sig, mu)(x)
-        interval(gauss)
-        ax.plot(x, gauss, color, linewidth=2)
+        if color == 'r':
+            gauss = make_gauss(1, sig, mu)(x)
+            interval(gauss)
+            ax.plot(x, gauss, color, linewidth=2)
 
     plt.xlim(-300, 300)
     plt.ylim(0, 1)

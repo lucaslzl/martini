@@ -335,7 +335,7 @@ class TimeMinutesClustering:
 		plt.xticks(np.arange(0, 145, 6), np.arange(0, 25))
 		plt.grid(True)
 
-		plt.show()
+		plt.savefig('windows.pdf', bbox_inches="tight", format='pdf')
 
 	def plot_to_save(self, window_scores, name):
 
@@ -357,11 +357,14 @@ class TimeMinutesClustering:
 		result_max = [0]
 		crimes = month_crimes.groupby('type').all().index
 
+		#windows = []
+
 		for crime in crimes:
 			
 			crimes_filtered = month_crimes.query("type == '%s'" % crime)
 				
 			window_scores = self.calculate_score(crimes_filtered)
+			#windows.append(window_scores)
 
 			peaks = find_peaks(window_scores, distance=3)[0].tolist()
 
@@ -385,6 +388,8 @@ class TimeMinutesClustering:
 							result_max.append(max_interval)
 
 							last_window = iw
+
+		#self.plot_to_see(windows)
 
 		return np.max(result_max)
 
@@ -436,7 +441,7 @@ class CompareClustering:
 
 		labels = []
 		for month in range(1, 13):
-			for day in ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']:
+			for day in ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']:
 				if day is 'monday':
 					labels.append(self.u.MONTHS[month])
 				else:
@@ -467,7 +472,7 @@ class CompareClustering:
 
 				for indx, strategy in enumerate([FixedWindowClustering(1), FixedWindowClustering(2), FixedWindowClustering(4), FixedWindowClustering(8), FixedWindowClustering(12),\
 					TimeMinutesClustering()]):
-
+				
 					thread = CallClusterize(indx, strategy, month_crimes.copy(), Clustering())
 					thread.start()
 
@@ -478,8 +483,11 @@ class CompareClustering:
 					maxi = t.get()
 					result_strategy[indx].append(maxi)
 
-		self.plot_max_metric(result_strategy)
-		self.plot_ecdf(result_strategy)
+				#TimeMinutesClustering().clusterize(month_crimes, Clustering())
+				#exit()
+
+		#self.plot_max_metric(result_strategy)
+		#self.plot_ecdf(result_strategy)
 
 
 ######################################################################
