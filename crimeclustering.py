@@ -151,12 +151,13 @@ class FixedWindowClustering:
 
 		return interval
 
-	def calculate_percentage_max(self, interval, windowsize):
-		return 100 * interval / (windowsize*60)
+	def metric_cluster(self, clusters):
+		return clusters['cluster'].max(), int(clusters.shape[0])
 
 	def clusterize(self, month_crimes, clustering):
 
 		result_max = [0]
+		result_cluster = {}
 
 		crimes = month_crimes.groupby('type').all().index
 
@@ -173,12 +174,16 @@ class FixedWindowClustering:
 					if len(window_crime) >= 3:
 						clusters = clustering.clusterize(window_crime).query('cluster != -1')
 						
-						max_interval = self.metric_max_interval(clusters)
-						#percentage_interval = self.calculate_percentage_max(max_interval, self.size)
-						result_max.append(max_interval)
+						if len(clusters) > 0:
+							max_interval = self.metric_max_interval(clusters)
+							result_max.append(max_interval)
 
-		return np.max(result_max)
+							cluster, crimes = self.metric_cluster(clusters)
+							if crime not in result_cluster:
+								result_cluster[crime] = []
+							result_cluster[crime].append((cluster, crimes))
 
+		return np.max(result_max), result_cluster
 
 
 class TimeMinutesClustering:
@@ -304,6 +309,9 @@ class TimeMinutesClustering:
 
 		return interval
 
+	def metric_cluster(self, clusters):
+		return clusters['cluster'].max(), int(clusters.shape[0])
+
 	def calculate_percentage_max(self, interval, windowsize):
 		return 100 * interval / (windowsize*10)
 
@@ -355,6 +363,7 @@ class TimeMinutesClustering:
 	def clusterize(self, month_crimes, clustering):
 
 		result_max = [0]
+		result_cluster = {}
 		crimes = month_crimes.groupby('type').all().index
 
 		#windows = []
@@ -384,14 +393,20 @@ class TimeMinutesClustering:
 						if len(crimes_window) >= 3:
 							cluster_crime = clustering.clusterize(crimes_window).query('cluster != -1')
 
-							max_interval = self.metric_max_interval(cluster_crime)
-							result_max.append(max_interval)
+							if len(cluster_crime) > 0:
+								max_interval = self.metric_max_interval(cluster_crime)
+								result_max.append(max_interval)
 
-							last_window = iw
+								cluster, crimes = self.metric_cluster(cluster_crime)
+								if crime not in result_cluster:
+									result_cluster[crime] = []
+								result_cluster[crime].append((cluster, crimes, last_window, iw))
+
+						last_window = iw
 
 		#self.plot_to_see(windows)
 
-		return np.max(result_max)
+		return np.max(result_max), result_cluster
 
 
 ######################################################################
@@ -406,13 +421,18 @@ class CallClusterize(threading.Thread):
 		self.clustering = clustering
 
 		self.maxi = 0
+		self.cluster = 0
 
 	def run(self):
-		maxi = self.strategy.clusterize(self.month_crimes, self.clustering)
+		maxi, cluster = self.strategy.clusterize(self.month_crimes, self.clustering)
 		self.maxi = maxi
+		self.cluster = cluster
 
-	def get(self):
+	def get_maxi(self):
 		return self.maxi
+
+	def get_cluster(self):
+		return self.cluster
 
 
 class CompareClustering:
@@ -453,9 +473,30 @@ class CompareClustering:
 
 		plt.savefig('metric_max.pdf', bbox_inches="tight", format='pdf')
 
+	def format_to_min(self, result_cluster):
+
+		for i in range(0, 6):
+			pass
+
+
+	def plot_cluster(self, result_cluster):
+
+		data = self.format_to_min(result_cluster)
+
+		plt.clf()
+		fig, ax = plt.subplots()
+		ax.plot(x, result, 'o--', label=labely[indx], alpha=0.7, markersize=5)
+		ax.legend()
+
+		ax.grid('off', axis='x')
+		ax.grid('on', axis='y')
+
+		plt.savefig('metric_cluster.pdf', bbox_inches="tight", format='pdf')
+
 	def clusterize(self):
 
-		result_strategy = [[], [], [], [], [], []]
+		result_maxi = [[], [], [], [], [], []]
+		result_cluster = [[], [], [], [], [], []]
 
 		for month in range(1, 13):
 
@@ -480,14 +521,15 @@ class CompareClustering:
 
 				for indx, t in enumerate(threads):
 					t.join()
-					maxi = t.get()
-					result_strategy[indx].append(maxi)
+					result_maxi[indx].append(t.get_maxi())
+					result_cluster[indx].append(t.get_cluster())
 
-				#TimeMinutesClustering().clusterize(month_crimes, Clustering())
-				#exit()
+				# TimeMinutesClustering().clusterize(month_crimes, Clustering())
+				# exit()
 
-		#self.plot_max_metric(result_strategy)
-		#self.plot_ecdf(result_strategy)
+		self.plot_max_metric(result_maxi)
+		self.plot_ecdf(result_maxi)
+		self.plot_cluster(result_cluster)
 
 
 ######################################################################
