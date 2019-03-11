@@ -152,7 +152,12 @@ class FixedWindowClustering:
 		return interval
 
 	def metric_cluster(self, clusters):
-		return clusters['cluster'].max(), int(clusters.shape[0])
+
+		cl = 0
+		if not clusters is None and not np.isnan(clusters['cluster'].max()):
+			cl = clusters['cluster'].max()
+
+		return cl
 
 	def clusterize(self, month_crimes, clustering):
 
@@ -171,17 +176,19 @@ class FixedWindowClustering:
 					
 					window_crime = self.get_window(crimes_filtered, i, i+self.size)
 
+					clusters = None
+					crimes = int(window_crime.shape[0])
+
 					if len(window_crime) >= 3:
 						clusters = clustering.clusterize(window_crime).query('cluster != -1')
 						
-						if len(clusters) > 0:
-							max_interval = self.metric_max_interval(clusters)
-							result_max.append(max_interval)
+						max_interval = self.metric_max_interval(clusters)
+						result_max.append(max_interval)
 
-							cluster, crimes = self.metric_cluster(clusters)
-							if crime not in result_cluster:
-								result_cluster[crime] = []
-							result_cluster[crime].append((cluster, crimes))
+					cluster = self.metric_cluster(clusters)
+					if crime not in result_cluster:
+						result_cluster[crime] = []
+					result_cluster[crime].append((cluster, crimes))
 
 		return np.max(result_max), result_cluster
 
@@ -310,7 +317,12 @@ class TimeMinutesClustering:
 		return interval
 
 	def metric_cluster(self, clusters):
-		return clusters['cluster'].max(), int(clusters.shape[0])
+
+		cl = 0
+		if clusters is not None and not np.isnan(clusters['cluster'].max()):
+			cl = clusters['cluster'].max()
+
+		return cl
 
 	def calculate_percentage_max(self, interval, windowsize):
 		return 100 * interval / (windowsize*10)
@@ -390,17 +402,19 @@ class TimeMinutesClustering:
 
 						crimes_window = self.get_window(last_window, iw, crimes_filtered)
 
+						cluster_crime = None
+						crimes = int(crimes_window.shape[0])
+
 						if len(crimes_window) >= 3:
 							cluster_crime = clustering.clusterize(crimes_window).query('cluster != -1')
 
-							if len(cluster_crime) > 0:
-								max_interval = self.metric_max_interval(cluster_crime)
-								result_max.append(max_interval)
+							max_interval = self.metric_max_interval(cluster_crime)
+							result_max.append(max_interval)
 
-								cluster, crimes = self.metric_cluster(cluster_crime)
-								if crime not in result_cluster:
-									result_cluster[crime] = []
-								result_cluster[crime].append((cluster, crimes, last_window, iw))
+						cluster = self.metric_cluster(cluster_crime)
+						if crime not in result_cluster:
+							result_cluster[crime] = []
+						result_cluster[crime].append((cluster, crimes, last_window, iw))
 
 						last_window = iw
 
@@ -445,6 +459,7 @@ class CompareClustering:
 		plt.clf()
 		for indx, result in enumerate(result_max):
 			ax, _, _ = ecdf(x=result)
+		plt.legend(['Fixed 1', 'Fixed 2', 'Fixed 4', 'Fixed 8', 'Fixed 12', 'Our Approach'])
 		
 		plt.savefig('metric_max_ecdf.pdf', bbox_inches="tight", format='pdf')
 
@@ -454,7 +469,7 @@ class CompareClustering:
 		fig, ax = plt.subplots()
 
 		x = [x for x in range(len(result_max[0]))]
-		labely = ['Fixed 1', 'Fixed 2', 'Fixed 4', 'Fixed 8', 'Fixed 12', 'Time Minutes']
+		labely = ['Fixed 1', 'Fixed 2', 'Fixed 4', 'Fixed 8', 'Fixed 12', 'Our Approach']
 		for indx, result in enumerate(result_max):
 			ax.plot(x, result, 'o--', label=labely[indx], alpha=0.7, markersize=5)
 		ax.legend()
@@ -473,25 +488,71 @@ class CompareClustering:
 
 		plt.savefig('metric_max.pdf', bbox_inches="tight", format='pdf')
 
-	def format_to_min(self, result_cluster):
+	def format_to_min_fixed(self, result_cluster):
 
-		for i in range(0, 6):
-			pass
+		cluster_list = {}
 
+		for i in range(0, 5):
+
+			for fragment in result_cluster[i]:
+
+				for cl in fragment:
+
+					if cl not in cluster_list:
+						cluster_list[cl] = []
+
+					size = len(fragment[cl])
+					count = (24 // size) * 60
+
+					fcl_list = []
+					for fcl in fragment[cl]:
+						fcl_list.extend([fcl[0]]*count)
+
+					cluster_list[cl].append(fcl_list)
+
+		return cluster_list
+
+	def format_to_min_timeminutes(self, cluster_list, result_cluster):
+
+		for fragment in result_cluster[5]:
+
+			for cl in fragment:
+
+				if cl not in cluster_list:
+					cluster_list[cl] = []
+
+				fcl_list = []
+				for fcl in fragment[cl]:
+					fcl_list.extend([fcl[0]]*((fcl[3] - fcl[2])*10))
+
+				cluster_list[cl].append(fcl_list)
 
 	def plot_cluster(self, result_cluster):
 
-		data = self.format_to_min(result_cluster)
+		if not os.path.exists('clusters_plot'):
+			os.makedirs('clusters_plot')
 
-		plt.clf()
-		fig, ax = plt.subplots()
-		ax.plot(x, result, 'o--', label=labely[indx], alpha=0.7, markersize=5)
-		ax.legend()
+		cluster_list = self.format_to_min_fixed(result_cluster)
+		self.format_to_min_timeminutes(cluster_list, result_cluster)
 
-		ax.grid('off', axis='x')
-		ax.grid('on', axis='y')
+		label = ['One Hour', 'Two Hours', 'Four Hours', 'Eight Hours', 'Twelve Hours', 'Our Approach']
 
-		plt.savefig('metric_cluster.pdf', bbox_inches="tight", format='pdf')
+		for crime in cluster_list:
+
+			plt.clf()
+			fig, ax = plt.subplots()
+			
+			for indx, strategy in enumerate(cluster_list[crime]):
+				#strategy = np.convolve(strategy, np.ones((3,))/3, mode='valid')
+				ax.plot(strategy, '--', label=label[indx], alpha=0.9)
+			ax.legend()
+
+			plt.xticks(np.arange(0, 1440, 60), ['']*24)
+
+			#ax.grid('off', axis='x')
+			#ax.grid('on', axis='y')
+
+			plt.savefig('clusters_plot/'+ crime + '.pdf', bbox_inches="tight", format='pdf')
 
 	def clusterize(self):
 
@@ -524,11 +585,14 @@ class CompareClustering:
 					result_maxi[indx].append(t.get_maxi())
 					result_cluster[indx].append(t.get_cluster())
 
+				break
+			break
+
 				# TimeMinutesClustering().clusterize(month_crimes, Clustering())
 				# exit()
 
-		self.plot_max_metric(result_maxi)
-		self.plot_ecdf(result_maxi)
+		#self.plot_max_metric(result_maxi)
+		#self.plot_ecdf(result_maxi)
 		self.plot_cluster(result_cluster)
 
 
