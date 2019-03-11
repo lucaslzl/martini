@@ -177,7 +177,6 @@ class FixedWindowClustering:
 					window_crime = self.get_window(crimes_filtered, i, i+self.size)
 
 					clusters = None
-					crimes = int(window_crime.shape[0])
 
 					if len(window_crime) >= 3:
 						clusters = clustering.clusterize(window_crime).query('cluster != -1')
@@ -188,7 +187,7 @@ class FixedWindowClustering:
 					cluster = self.metric_cluster(clusters)
 					if crime not in result_cluster:
 						result_cluster[crime] = []
-					result_cluster[crime].append((cluster, crimes))
+					result_cluster[crime].append(cluster)
 
 		return np.max(result_max), result_cluster
 
@@ -403,7 +402,6 @@ class TimeMinutesClustering:
 						crimes_window = self.get_window(last_window, iw, crimes_filtered)
 
 						cluster_crime = None
-						crimes = int(crimes_window.shape[0])
 
 						if len(crimes_window) >= 3:
 							cluster_crime = clustering.clusterize(crimes_window).query('cluster != -1')
@@ -414,7 +412,7 @@ class TimeMinutesClustering:
 						cluster = self.metric_cluster(cluster_crime)
 						if crime not in result_cluster:
 							result_cluster[crime] = []
-						result_cluster[crime].append((cluster, crimes, last_window, iw))
+						result_cluster[crime].append((cluster, last_window, iw))
 
 						last_window = iw
 
@@ -454,6 +452,43 @@ class CompareClustering:
 	def __init__(self):
 		self.u = Util()
 
+	def get_window(self, start, end, crimes_filtered):
+
+		start_hour = start * 10 // 60
+		start_minute = start * 10 % 60
+
+		end_hour = end * 10 // 60
+		end_minute = end * 10 % 60
+
+		# Filter the closed interval
+		crimes_opened = crimes_filtered.query('hour > {0} & hour < {1}'.format(start_hour, end_hour))
+
+		# Filter the opened interval
+		crimes_closed_low = crimes_filtered.query('hour == {0} & minute >= {1}'.format(start_hour, start_minute))
+		crimes_closed_high = crimes_filtered.query('hour == {0} & minute < {1}'.format(end_hour, end_minute))
+
+		return pd.concat([crimes_opened, crimes_closed_low, crimes_closed_high])
+
+	def count_crime(self, month_crimes, result_crime):
+
+		crimes = month_crimes.groupby('type').all().index
+		for crime in crimes:
+			crimes_filtered = month_crimes.query("type == '%s'" % crime)
+
+			if crime not in result_crime:
+				result_crime[crime] = []
+
+			if not crimes_filtered.empty:
+				start_minute = 0
+				for end_minute in range(1, 144):
+
+					result_crime[crime].extend([self.get_window(start_minute, end_minute, crimes_filtered).shape[0]] * 10)
+					start_minute = end_minute
+
+			else:
+				result_crime[crime].extend([0]*1440)
+
+
 	def plot_ecdf(self, result_max):
 
 		plt.clf()
@@ -471,7 +506,7 @@ class CompareClustering:
 		x = [x for x in range(len(result_max[0]))]
 		labely = ['Fixed 1', 'Fixed 2', 'Fixed 4', 'Fixed 8', 'Fixed 12', 'Our Approach']
 		for indx, result in enumerate(result_max):
-			ax.plot(x, result, 'o--', label=labely[indx], alpha=0.7, markersize=5)
+			ax.plot(x, result, 'o--', label=labely[indx], alpha=0.5, markersize=5)
 		ax.legend()
 
 		labels = []
@@ -506,7 +541,7 @@ class CompareClustering:
 
 					fcl_list = []
 					for fcl in fragment[cl]:
-						fcl_list.extend([fcl[0]]*count)
+						fcl_list.extend([fcl]*count)
 
 					cluster_list[cl].append(fcl_list)
 
@@ -523,11 +558,11 @@ class CompareClustering:
 
 				fcl_list = []
 				for fcl in fragment[cl]:
-					fcl_list.extend([fcl[0]]*((fcl[3] - fcl[2])*10))
+					fcl_list.extend([fcl[0]]*((fcl[2] - fcl[1])*10))
 
 				cluster_list[cl].append(fcl_list)
 
-	def plot_cluster(self, result_cluster):
+	def plot_cluster(self, result_cluster, result_crime):
 
 		if not os.path.exists('clusters_plot'):
 			os.makedirs('clusters_plot')
@@ -542,6 +577,8 @@ class CompareClustering:
 			plt.clf()
 			fig, ax = plt.subplots()
 			
+			#ax.bar(len(result_crime[crime]), result_crime[crime])
+
 			for indx, strategy in enumerate(cluster_list[crime]):
 				#strategy = np.convolve(strategy, np.ones((3,))/3, mode='valid')
 				ax.plot(strategy, '--', label=label[indx], alpha=0.9)
@@ -554,10 +591,12 @@ class CompareClustering:
 
 			plt.savefig('clusters_plot/'+ crime + '.pdf', bbox_inches="tight", format='pdf')
 
+
 	def clusterize(self):
 
 		result_maxi = [[], [], [], [], [], []]
 		result_cluster = [[], [], [], [], [], []]
+		result_crime = {}
 
 		for month in range(1, 13):
 
@@ -585,6 +624,8 @@ class CompareClustering:
 					result_maxi[indx].append(t.get_maxi())
 					result_cluster[indx].append(t.get_cluster())
 
+				self.count_crime(month_crimes, result_crime)
+
 				break
 			break
 
@@ -593,7 +634,7 @@ class CompareClustering:
 
 		#self.plot_max_metric(result_maxi)
 		#self.plot_ecdf(result_maxi)
-		self.plot_cluster(result_cluster)
+		self.plot_cluster(result_cluster, result_crime)
 
 
 ######################################################################
