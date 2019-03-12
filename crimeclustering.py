@@ -198,7 +198,8 @@ class TimeMinutesClustering:
 		self.u = Util()
 
 	def make_gauss(self, N=1, sig=1, mu=0):
-		return lambda x: N/(sig * (2*np.pi)**.5) * np.e ** (-(x-mu)**2/(410 * sig**2))
+		#return lambda x: N/(sig * (2*np.pi)**.5) * np.e ** (-(x-mu)**2/(410 * sig**2))
+		return lambda x: N/(sig * (2*np.pi)**.5) * np.e ** (-(x-mu)**2/(105 * sig**2))
 
 	def calculate_difference(self, hour, minute, ref_hour, ref_minute):
 
@@ -506,7 +507,7 @@ class CompareClustering:
 		x = [x for x in range(len(result_max[0]))]
 		labely = ['Fixed 1', 'Fixed 2', 'Fixed 4', 'Fixed 8', 'Fixed 12', 'Our Approach']
 		for indx, result in enumerate(result_max):
-			ax.plot(x, result, 'o--', label=labely[indx], alpha=0.5, markersize=5)
+			ax.plot(x, result, 'o--', label=labely[indx], alpha=0.7, markersize=5)
 		ax.legend()
 
 		labels = []
@@ -613,14 +614,14 @@ class CompareClustering:
 			
 			ax[1].bar(np.arange(0,len(result_crime[crime])), result_crime[crime])
 
-			strategy_icon = ['x', '+', '2', '|', '_', '1']
-			#strategy_icon = ['.','_','*','+','x','|']
+			#strategy_icon = ['x', '+', '2', '|', '_', '1']
 			for indx, strategy in enumerate(cluster_list[crime]):
 				#strategy = np.convolve(strategy, np.ones((3,))/3, mode='valid')
-				ax[0].plot(strategy[0::20], strategy_icon[indx], label=label[indx], alpha=0.9, markersize=4)
+				ax[0].plot(strategy, '.', label=label[indx], alpha=0.9, markersize=4)
 			ax[0].legend(loc='upper center', ncol=3, fancybox=True, bbox_to_anchor=(0.5, 1.35))
 
 			plt.xticks(np.arange(0, 1440, 60), ['']*24)
+			#plt.xticks(np.arange(0, 1440, 60), ['']*24)
 
 			#ax.grid('off', axis='x')
 			#ax.grid('on', axis='y')

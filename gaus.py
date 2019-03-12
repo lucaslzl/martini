@@ -3,7 +3,8 @@ import numpy as np
 import matplotlib.pyplot as plt 
 
 def make_gauss(N, sig, mu):
-    return lambda x: N/(sig * (2*np.pi)**.5) * np.e ** (-(x-mu)**2/(410 * sig**2))
+    #return lambda x: N/(sig * (2*np.pi)**.5) * np.e ** (-(x-mu)**2/(410 * sig**2))
+    return lambda x: N/(sig * (2*np.pi)**.5) * np.e ** (-(x-mu)**2/(105 * sig**2))
 
 def interval(gauss):
     gauss = [float('%.4f' % x) for x in gauss]
@@ -27,7 +28,7 @@ def main():
 
     plt.xlim(-300, 300)
     plt.ylim(0, 1)
-    plt.legend(['0.2', '1.0', '5.0', '0.5'], loc='best')
+    #plt.legend(['0.2', '1.0', '5.0', '0.5'], loc='best')
     plt.show()
 
 if __name__ == '__main__':
