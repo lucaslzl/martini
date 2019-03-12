@@ -562,6 +562,37 @@ class CompareClustering:
 
 				cluster_list[cl].append(fcl_list)
 
+	def normalize(self, x, mini, maxi):
+		return (x - mini) / (maxi - mini)
+
+	def normalize_clusters(self, cluster_list):
+
+		for crime in cluster_list:
+
+			mini, maxi = 0, 0
+			for indx, fragment in enumerate(cluster_list[crime]):
+
+				if np.amin(fragment) < mini:
+					mini = np.amin(fragment)
+
+				if np.amax(fragment) > maxi:
+					maxi = np.amax(fragment)
+
+			if maxi != 0:
+				for indx, fragment in enumerate(cluster_list[crime]):
+					fragment = [self.normalize(x, mini, maxi) for x in fragment]
+					cluster_list[crime][indx] = fragment
+
+	def normalize_crimes(self, crime_list):
+
+		for crime in crime_list:
+
+			mini = np.amin(crime_list[crime])
+			maxi = np.amax(crime_list[crime])
+
+			if maxi != 0:
+				crime_list[crime] = [self.normalize(x, mini, maxi) for x in crime_list[crime]]
+
 	def plot_cluster(self, result_cluster, result_crime):
 
 		if not os.path.exists('clusters_plot'):
@@ -570,19 +601,24 @@ class CompareClustering:
 		cluster_list = self.format_to_min_fixed(result_cluster)
 		self.format_to_min_timeminutes(cluster_list, result_cluster)
 
+		self.normalize_clusters(cluster_list)
+		self.normalize_crimes(result_crime)
+
 		label = ['One Hour', 'Two Hours', 'Four Hours', 'Eight Hours', 'Twelve Hours', 'Our Approach']
 
 		for crime in cluster_list:
 
 			plt.clf()
-			fig, ax = plt.subplots()
+			fig, ax = plt.subplots(2)
 			
-			#ax.bar(len(result_crime[crime]), result_crime[crime])
+			ax[1].bar(np.arange(0,len(result_crime[crime])), result_crime[crime])
 
+			strategy_icon = ['x', '+', '2', '|', '_', '1']
+			#strategy_icon = ['.','_','*','+','x','|']
 			for indx, strategy in enumerate(cluster_list[crime]):
 				#strategy = np.convolve(strategy, np.ones((3,))/3, mode='valid')
-				ax.plot(strategy, '--', label=label[indx], alpha=0.9)
-			ax.legend()
+				ax[0].plot(strategy[0::20], strategy_icon[indx], label=label[indx], alpha=0.9, markersize=4)
+			ax[0].legend(loc='upper center', ncol=3, fancybox=True, bbox_to_anchor=(0.5, 1.35))
 
 			plt.xticks(np.arange(0, 1440, 60), ['']*24)
 
