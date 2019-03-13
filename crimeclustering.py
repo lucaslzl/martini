@@ -493,9 +493,13 @@ class CompareClustering:
 	def plot_ecdf(self, result_max):
 
 		plt.clf()
+		axis = None
+
 		for indx, result in enumerate(result_max):
 			ax, _, _ = ecdf(x=result)
-		plt.legend(['Fixed 1', 'Fixed 2', 'Fixed 4', 'Fixed 8', 'Fixed 12', 'Our Approach'])
+			axis = ax 
+
+		plt.legend(['Fixed 1', 'Fixed 2', 'Fixed 4', 'Fixed 8', 'Fixed 12', 'Our Approach'], loc='upper center', ncol=3, fancybox=True, bbox_to_anchor=(0.5, 1.35))
 		
 		plt.savefig('metric_max_ecdf.pdf', bbox_inches="tight", format='pdf')
 
@@ -508,7 +512,7 @@ class CompareClustering:
 		labely = ['Fixed 1', 'Fixed 2', 'Fixed 4', 'Fixed 8', 'Fixed 12', 'Our Approach']
 		for indx, result in enumerate(result_max):
 			ax.plot(x, result, 'o--', label=labely[indx], alpha=0.7, markersize=5)
-		ax.legend()
+		ax.legend(loc='upper center', ncol=3, fancybox=True, bbox_to_anchor=(0.5, 1.35))
 
 		labels = []
 		for month in range(1, 13):
@@ -620,8 +624,16 @@ class CompareClustering:
 				ax[0].plot(strategy, '.', label=label[indx], alpha=0.9, markersize=4)
 			ax[0].legend(loc='upper center', ncol=3, fancybox=True, bbox_to_anchor=(0.5, 1.35))
 
-			plt.xticks(np.arange(0, 1440, 60), ['']*24)
-			#plt.xticks(np.arange(0, 1440, 60), ['']*24)
+			plt.sca(ax[0])
+			plt.xticks(np.arange(0, 1441, 60), ['']*24)
+
+			plt.ylabel('Cluster Quantity')
+
+			plt.sca(ax[1])
+			plt.xticks(np.arange(0, 1441, 60), ['']*24)
+
+			plt.ylabel('Crime Quantity')
+			plt.xlabel('Hours of the day')
 
 			#ax.grid('off', axis='x')
 			#ax.grid('on', axis='y')
