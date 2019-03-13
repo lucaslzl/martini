@@ -499,8 +499,10 @@ class CompareClustering:
 			ax, _, _ = ecdf(x=result)
 			axis = ax 
 
-		plt.legend(['Fixed 1', 'Fixed 2', 'Fixed 4', 'Fixed 8', 'Fixed 12', 'Our Approach'], loc='upper center', ncol=3, fancybox=True, bbox_to_anchor=(0.5, 1.35))
-		
+		plt.legend(['Fixed 1', 'Fixed 2', 'Fixed 4', 'Fixed 8', 'Fixed 12', 'MARTINI'], 
+			loc='upper center', ncol=3, fancybox=True, bbox_to_anchor=(0.5, 1.15))
+		plt.xlabel('Time Interval (minutes)')
+
 		plt.savefig('metric_max_ecdf.pdf', bbox_inches="tight", format='pdf')
 
 	def plot_max_metric(self, result_max):
@@ -509,10 +511,10 @@ class CompareClustering:
 		fig, ax = plt.subplots()
 
 		x = [x for x in range(len(result_max[0]))]
-		labely = ['Fixed 1', 'Fixed 2', 'Fixed 4', 'Fixed 8', 'Fixed 12', 'Our Approach']
+		labely = ['Fixed 1', 'Fixed 2', 'Fixed 4', 'Fixed 8', 'Fixed 12', 'MARTINI']
 		for indx, result in enumerate(result_max):
 			ax.plot(x, result, 'o--', label=labely[indx], alpha=0.7, markersize=5)
-		ax.legend(loc='upper center', ncol=3, fancybox=True, bbox_to_anchor=(0.5, 1.35))
+		ax.legend(loc='upper center', ncol=3, fancybox=True, bbox_to_anchor=(0.5, 1.15))
 
 		labels = []
 		for month in range(1, 13):
@@ -521,8 +523,10 @@ class CompareClustering:
 					labels.append(self.u.MONTHS[month])
 				else:
 					labels.append('')
-		
+
+		plt.ylabel('Time Interval (minutes)')
 		plt.xticks(np.arange(0, len(result_max[0])), labels, rotation=50)
+		
 		ax.grid('off', axis='x')
 		ax.grid('on', axis='y')
 
@@ -609,7 +613,7 @@ class CompareClustering:
 		self.normalize_clusters(cluster_list)
 		self.normalize_crimes(result_crime)
 
-		label = ['One Hour', 'Two Hours', 'Four Hours', 'Eight Hours', 'Twelve Hours', 'Our Approach']
+		label = ['One Hour', 'Two Hours', 'Four Hours', 'Eight Hours', 'Twelve Hours', 'MARTINI']
 
 		for crime in cluster_list:
 
@@ -618,14 +622,16 @@ class CompareClustering:
 			
 			ax[1].bar(np.arange(0,len(result_crime[crime])), result_crime[crime])
 
-			#strategy_icon = ['x', '+', '2', '|', '_', '1']
+			strategy_icon = ['x', '+', '_', 's', 'o', '2']
 			for indx, strategy in enumerate(cluster_list[crime]):
 				#strategy = np.convolve(strategy, np.ones((3,))/3, mode='valid')
-				ax[0].plot(strategy, '.', label=label[indx], alpha=0.9, markersize=4)
+				#ax[0].plot(strategy, '.', label=label[indx], alpha=0.9, markersize=4)
+				ax[0].plot(strategy[0::20], strategy_icon[indx], label=label[indx], alpha=0.9, markersize=4)
 			ax[0].legend(loc='upper center', ncol=3, fancybox=True, bbox_to_anchor=(0.5, 1.35))
 
 			plt.sca(ax[0])
-			plt.xticks(np.arange(0, 1441, 60), ['']*24)
+			#plt.xticks(np.arange(0, 1441, 60), ['']*24)
+			plt.xticks(np.arange(0, 73, 3), ['']*24)
 
 			plt.ylabel('Cluster Quantity')
 
@@ -675,15 +681,15 @@ class CompareClustering:
 
 				self.count_crime(month_crimes, result_crime)
 
-				break
-			break
+				#break
+				#break
 
 				# TimeMinutesClustering().clusterize(month_crimes, Clustering())
 				# exit()
 
-		#self.plot_max_metric(result_maxi)
-		#self.plot_ecdf(result_maxi)
-		self.plot_cluster(result_cluster, result_crime)
+		self.plot_max_metric(result_maxi)
+		self.plot_ecdf(result_maxi)
+		#self.plot_cluster(result_cluster, result_crime)
 
 
 ######################################################################
