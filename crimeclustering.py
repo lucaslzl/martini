@@ -264,6 +264,16 @@ class TimeMinutesClustering:
 
 			last_peak = peak
 
+		if apeaks[0] < 3:
+			apeaks[0] = 0
+		if apeaks[0] != 0:
+			apeaks.insert(0, 0)
+
+		if apeaks[-1] > len(window_scores) - 3:
+			apeaks[-1] = len(window_scores) - 1
+		elif apeaks[-1] != len(window_scores)-1:
+			apeaks.append(len(window_scores)-1)
+
 		return apeaks
 
 	def get_window(self, start, end, crimes_filtered):
@@ -495,8 +505,10 @@ class CompareClustering:
 		plt.clf()
 		axis = None
 
+		strategy_icon = ['1', '|', '_', '.', 'o', '2']
+
 		for indx, result in enumerate(result_max):
-			ax, _, _ = ecdf(x=result)
+			ax, _, _ = ecdf(x=result, ecdf_marker=strategy_icon[indx])
 			axis = ax 
 
 		plt.legend(['Fixed 1', 'Fixed 2', 'Fixed 4', 'Fixed 8', 'Fixed 12', 'MARTINI'], 
@@ -511,9 +523,12 @@ class CompareClustering:
 		fig, ax = plt.subplots()
 
 		x = [x for x in range(len(result_max[0]))]
+		
 		labely = ['Fixed 1', 'Fixed 2', 'Fixed 4', 'Fixed 8', 'Fixed 12', 'MARTINI']
+		strategy_icon = ['1', '|', '_', '.', 'o', '2']
+		
 		for indx, result in enumerate(result_max):
-			ax.plot(x, result, 'o--', label=labely[indx], alpha=0.7, markersize=5)
+			ax.plot(x, result, strategy_icon[indx] + '--', label=labely[indx], alpha=0.7, markersize=5)
 		ax.legend(loc='upper center', ncol=3, fancybox=True, bbox_to_anchor=(0.5, 1.15))
 
 		labels = []
@@ -622,12 +637,12 @@ class CompareClustering:
 			
 			ax[1].bar(np.arange(0,len(result_crime[crime])), result_crime[crime])
 
-			strategy_icon = ['x', '+', '_', 's', 'o', '2']
+			strategy_icon = ['1', '|', '_', '.', 'o', '2']
 			for indx, strategy in enumerate(cluster_list[crime]):
 				#strategy = np.convolve(strategy, np.ones((3,))/3, mode='valid')
 				#ax[0].plot(strategy, '.', label=label[indx], alpha=0.9, markersize=4)
-				ax[0].plot(strategy[0::20], strategy_icon[indx], label=label[indx], alpha=0.9, markersize=4)
-			ax[0].legend(loc='upper center', ncol=3, fancybox=True, bbox_to_anchor=(0.5, 1.35))
+				ax[0].plot(strategy[0::20], strategy_icon[indx], label=label[indx], alpha=0.7, markersize=4)
+			ax[0].legend(loc='upper center', ncol=3, fancybox=True, bbox_to_anchor=(0.5, 1.33))
 
 			plt.sca(ax[0])
 			#plt.xticks(np.arange(0, 1441, 60), ['']*24)
@@ -681,15 +696,15 @@ class CompareClustering:
 
 				self.count_crime(month_crimes, result_crime)
 
-				#break
-				#break
+				break
+			break
 
-				# TimeMinutesClustering().clusterize(month_crimes, Clustering())
-				# exit()
+				#TimeMinutesClustering().clusterize(month_crimes, Clustering())
+				#exit()
 
-		self.plot_max_metric(result_maxi)
-		self.plot_ecdf(result_maxi)
-		#self.plot_cluster(result_cluster, result_crime)
+		#self.plot_max_metric(result_maxi)
+		#self.plot_ecdf(result_maxi)
+		self.plot_cluster(result_cluster, result_crime)
 
 
 ######################################################################
