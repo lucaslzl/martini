@@ -641,7 +641,7 @@ class CompareClustering:
 			for indx, strategy in enumerate(cluster_list[crime]):
 				#strategy = np.convolve(strategy, np.ones((3,))/3, mode='valid')
 				#ax[0].plot(strategy, '.', label=label[indx], alpha=0.9, markersize=4)
-				ax[0].plot(strategy[0::20], strategy_icon[indx], label=label[indx], alpha=0.7, markersize=4)
+				ax[0].plot(strategy[0::20], strategy_icon[indx], label=label[indx], alpha=0.7, markersize=5)
 			ax[0].legend(loc='upper center', ncol=3, fancybox=True, bbox_to_anchor=(0.5, 1.33))
 
 			plt.sca(ax[0])
