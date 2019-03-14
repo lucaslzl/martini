@@ -528,7 +528,7 @@ class CompareClustering:
 		strategy_icon = ['1', '|', '_', '.', 'o', '2']
 		
 		for indx, result in enumerate(result_max):
-			ax.plot(x, result, strategy_icon[indx] + '--', label=labely[indx], alpha=0.7, markersize=5)
+			ax.plot(x, result, strategy_icon[indx] + '--', label=labely[indx], alpha=0.7, markersize=6.5)
 		ax.legend(loc='upper center', ncol=3, fancybox=True, bbox_to_anchor=(0.5, 1.15))
 
 		labels = []
@@ -641,7 +641,7 @@ class CompareClustering:
 			for indx, strategy in enumerate(cluster_list[crime]):
 				#strategy = np.convolve(strategy, np.ones((3,))/3, mode='valid')
 				#ax[0].plot(strategy, '.', label=label[indx], alpha=0.9, markersize=4)
-				ax[0].plot(strategy[0::20], strategy_icon[indx], label=label[indx], alpha=0.7, markersize=5)
+				ax[0].plot(strategy[0::20], strategy_icon[indx], label=label[indx], alpha=0.9, markersize=6.5)
 			ax[0].legend(loc='upper center', ncol=3, fancybox=True, bbox_to_anchor=(0.5, 1.33))
 
 			plt.sca(ax[0])
@@ -696,15 +696,15 @@ class CompareClustering:
 
 				self.count_crime(month_crimes, result_crime)
 
-				break
-			break
+				#break
+				#break
 
 				#TimeMinutesClustering().clusterize(month_crimes, Clustering())
 				#exit()
 
-		#self.plot_max_metric(result_maxi)
-		#self.plot_ecdf(result_maxi)
-		self.plot_cluster(result_cluster, result_crime)
+		self.plot_max_metric(result_maxi)
+		self.plot_ecdf(result_maxi)
+		#self.plot_cluster(result_cluster, result_crime)
 
 
 ######################################################################
