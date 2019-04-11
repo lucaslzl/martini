@@ -356,29 +356,39 @@ class TimeMinutesClustering:
 
 	def plot_to_see(self, window_scores):
 
+		plt.clf()
 		plt.figure(1)
 		plt.subplot(211)
 
-		for w in window_scores:
-			plt.plot(range(0, 144), w, '--')
-			
-		plt.xticks(np.arange(0, 145, 6), np.arange(0, 25))
-		plt.grid(True)
+		#for w in window_scores:
+		#window_scores.insert(0, 0)
+		plt.plot(range(0, 144), window_scores, '--')
 
-		plt.savefig('windows.pdf', bbox_inches="tight", format='pdf')
+		plt.xticks(np.arange(0, 145, 6), np.arange(0, 25))
+		plt.grid(False)
+		plt.xlabel('Horas do dia')
+		plt.ylabel('Score')
+
+		plt.show()
+		#plt.savefig('windows.pdf', bbox_inches="tight", format='pdf')
 
 	def plot_to_save(self, window_scores, name):
+
+		if not os.path.exists('plots'):
+			os.makedirs('plots')
 
 		plt.clf()
 		plt.subplot(211)
 
 		plt.plot(range(0, 144), window_scores, '--')
 			
-		plt.xticks(np.arange(0, 145, 6), np.arange(0, 25))
+		plt.xticks(np.arange(0, 145, 12), np.arange(0, 25, 2))
 		#plt.grid(True)
+		plt.xlabel('Horas do dia')
+		plt.ylabel('Distribuição de crimes')
 
-		plt.grid('off', axis='x')
-		plt.grid('on', axis='y')
+		#plt.grid('off', axis='x')
+		#plt.grid('on', axis='y')
 
 		plt.savefig('plots/' + str(name) + '.pdf', bbox_inches="tight", format='pdf')
 
@@ -396,6 +406,11 @@ class TimeMinutesClustering:
 				
 			window_scores = self.calculate_score(crimes_filtered)
 			#windows.append(window_scores)
+			if crime in ['ASSAULT', 'BATTERY', 'BURGLARY', 'CRIMINAL DAMAGE', 'MOTOR VEHICLE THEFT',
+						'ROBBERY', 'THEFT']:
+				print(crime)
+				self.plot_to_save(window_scores, crime)
+				#input(';')
 
 			peaks = find_peaks(window_scores, distance=3)[0].tolist()
 
@@ -679,31 +694,31 @@ class CompareClustering:
 				day_crimes = self.u.read_data(day)
 				month_crimes = day_crimes['2018-' + str(month)]
 
-				threads = []
+				# threads = []
 
-				for indx, strategy in enumerate([FixedWindowClustering(1), FixedWindowClustering(2), FixedWindowClustering(4), FixedWindowClustering(8), FixedWindowClustering(12),\
-					TimeMinutesClustering()]):
+				# for indx, strategy in enumerate([FixedWindowClustering(1), FixedWindowClustering(2), FixedWindowClustering(4), FixedWindowClustering(8), FixedWindowClustering(12),\
+				# 	TimeMinutesClustering()]):
 				
-					thread = CallClusterize(indx, strategy, month_crimes.copy(), Clustering())
-					thread.start()
+				# 	thread = CallClusterize(indx, strategy, month_crimes.copy(), Clustering())
+				# 	thread.start()
 
-					threads.append(thread)
+				# 	threads.append(thread)
 
-				for indx, t in enumerate(threads):
-					t.join()
-					result_maxi[indx].append(t.get_maxi())
-					result_cluster[indx].append(t.get_cluster())
+				# for indx, t in enumerate(threads):
+				# 	t.join()
+				# 	result_maxi[indx].append(t.get_maxi())
+				# 	result_cluster[indx].append(t.get_cluster())
 
-				self.count_crime(month_crimes, result_crime)
+				# self.count_crime(month_crimes, result_crime)
 
 				#break
 				#break
 
-				#TimeMinutesClustering().clusterize(month_crimes, Clustering())
-				#exit()
+				TimeMinutesClustering().clusterize(month_crimes, Clustering())
+				exit()
 
-		self.plot_max_metric(result_maxi)
-		self.plot_ecdf(result_maxi)
+		#self.plot_max_metric(result_maxi)
+		#self.plot_ecdf(result_maxi)
 		#self.plot_cluster(result_cluster, result_crime)
 
 
