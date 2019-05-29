@@ -1,3 +1,3 @@
-# Timeminutes
+# Timeminutes - GLOBECOM
 
-Code to identify timewindow
+Code to identify timewindow and generate clusters

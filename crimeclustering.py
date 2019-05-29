@@ -694,32 +694,29 @@ class CompareClustering:
 				day_crimes = self.u.read_data(day)
 				month_crimes = day_crimes['2018-' + str(month)]
 
-				# threads = []
+				threads = []
 
-				# for indx, strategy in enumerate([FixedWindowClustering(1), FixedWindowClustering(2), FixedWindowClustering(4), FixedWindowClustering(8), FixedWindowClustering(12),\
-				# 	TimeMinutesClustering()]):
+				for indx, strategy in enumerate([FixedWindowClustering(1), FixedWindowClustering(2), FixedWindowClustering(4), FixedWindowClustering(8), FixedWindowClustering(12),\
+					TimeMinutesClustering()]):
 				
-				# 	thread = CallClusterize(indx, strategy, month_crimes.copy(), Clustering())
-				# 	thread.start()
+					thread = CallClusterize(indx, strategy, month_crimes.copy(), Clustering())
+					thread.start()
 
-				# 	threads.append(thread)
+					threads.append(thread)
 
-				# for indx, t in enumerate(threads):
-				# 	t.join()
-				# 	result_maxi[indx].append(t.get_maxi())
-				# 	result_cluster[indx].append(t.get_cluster())
+				for indx, t in enumerate(threads):
+					t.join()
+					result_maxi[indx].append(t.get_maxi())
+					result_cluster[indx].append(t.get_cluster())
 
-				# self.count_crime(month_crimes, result_crime)
+				self.count_crime(month_crimes, result_crime)
 
-				#break
-				#break
+				# TimeMinutesClustering().clusterize(month_crimes, Clustering())
+				# exit()
 
-				TimeMinutesClustering().clusterize(month_crimes, Clustering())
-				exit()
-
-		#self.plot_max_metric(result_maxi)
-		#self.plot_ecdf(result_maxi)
-		#self.plot_cluster(result_cluster, result_crime)
+		self.plot_max_metric(result_maxi)
+		self.plot_ecdf(result_maxi)
+		self.plot_cluster(result_cluster, result_crime)
 
 
 ######################################################################
