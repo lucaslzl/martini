@@ -711,9 +711,6 @@ class CompareClustering:
 
 				self.count_crime(month_crimes, result_crime)
 
-				# TimeMinutesClustering().clusterize(month_crimes, Clustering())
-				# exit()
-
 		self.plot_max_metric(result_maxi)
 		self.plot_ecdf(result_maxi)
 		self.plot_cluster(result_cluster, result_crime)
