@@ -16,7 +16,7 @@
 To install python modules execute the next command.
 
 ```bash
-pip install .
+pip install -r requirements.txt
 ```
 
 All requirements are listed in requirements.txt file.
